@@ -24,3 +24,9 @@ WriteMakefile
    'AUTHOR' => 'Slaven Rezic (eserte@cs.tu-berlin.de)',
   );
 
+sub MY::libscan {
+    my($self,$path) = @_;
+    return '' if $path =~ m:\b(RCS|CVS|SCCS)\b: ;
+    return '' if $path =~ m:\b(install\.pl)$: ;
+    $path;
+}
