@@ -1,14 +1,14 @@
 # -*- perl -*-
 
 #
-# $Id: ICalEvent.pm,v 1.3 2002/04/16 22:27:23 eserte Exp $
+# $Id: ICalEvent.pm,v 1.4 2003/03/28 10:40:58 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2002 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-# Mail: slaven.rezic@berlin.de
+# Mail: slaven@rezic.de
 # WWW:  http://www.rezic.de/eserte/
 #
 
@@ -16,7 +16,7 @@ package
     Tk::ICalEvent;
 use strict;
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 use base qw(Tk::Frame);
 Construct Tk::Widget 'ICalEvent';
