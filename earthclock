@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.28 2000/09/04 23:35:49 eserte Exp $
+# $Id: earthclock,v 1.29 2000/09/11 18:01:57 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -39,7 +39,7 @@ use lib "$FindBin::RealBin";
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/);
 
 my $pos = "fixed,53,13";
 my $wait = 30*60;
@@ -357,14 +357,15 @@ sub create_cal {
     my(@cal) = _cal(12, 2000); # sample data with 6 weeks
 
     my $fixf;
+    my $fixed_font_name = ($Tk::platform eq 'MSWin32' ? 'Courier -7' : 'fixed');
     if (!$top->{FixedFont}) {
 	my $l = $tl->Label;
 	my $font = $l->cget(-font);
 	$l->destroy;
-	if ($top->fontMetrics($font, -fixed)) {
+	if ($Tk::platform ne 'MSWin32' and $top->fontMetrics($font, -fixed)) {
 	    $fixf = $font;
 	} else {
-	    $fixf = $top->fontCreate("fixed");
+	    $fixf = $top->fontCreate($fixed_font_name);
 	}
 	$top->{FixedFont} = $fixf;
     } else {
@@ -445,20 +446,24 @@ sub show_cal {
 	my($month_name, $year_text) = ($1, $2);
 	$c->createText(0, $start_y, %common_args,
 		       -tags => ["text", "month"],
+		       -font => $top->{FixedFont},
 		       -text => $month_name);
 	$c->createText(length($month_name)*$c->{CharWidth}, $start_y,
 		       %common_args,
 		       -tags => ["text", "year"],
+		       -font => $top->{FixedFont},
 		       -text => $year_text);
     } else {
 	$c->createText(0, $start_y, %common_args,
 		       -tags => "text",
+		       -font => $top->{FixedFont},
 		       -text => $month_text);
     }
 
     my $weekday_text = shift @cal;
     $c->createText(0, $start_y + $c->{LineHeight}, %common_args,
 		   -tags => "text",
+		   -font => $top->{FixedFont},
 		   -text => $weekday_text);
 
     my $y = $start_y + $c->{LineHeight}*2;
@@ -480,6 +485,7 @@ sub show_cal {
 		}
 		$c->createText($x, $y, %args,
 			       -tags => ["text", "date", "date-$number"],
+			       -font => $top->{FixedFont},
 			       -text => $date);
 		$x+=$c->{CharWidth}*3;
 	    }
@@ -487,6 +493,7 @@ sub show_cal {
 	    warn "Can't parse $cal_line";
 	    $c->createText(0, $y, %common_args,
 			   -tags => "text",
+			   -font => $top->{FixedFont},
 			   -text => $cal_line);
 	}
 	$y += $c->{LineHeight};
