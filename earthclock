@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.45 2002/02/24 21:30:54 eserte Exp $
+# $Id: earthclock,v 1.46 2002/02/24 21:38:20 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002 Slaven Rezic. All rights reserved.
@@ -15,7 +15,7 @@
 
 =head1 NAME
 
-earthclock - a nice clock with the earth
+earthclock - a nice clock displaying the earth
 
 =head1 DESCRIPTION
 
@@ -64,7 +64,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -83,10 +83,11 @@ my $date;
 my $test = 0;
 my $v;
 
-my $meteosat7_url = "http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG";
-my $gms5_url      = "http://rsd.gsfc.nasa.gov/goesg/earth/Weather/GMS-5/jpg/vis/4km/0latest.jpg";
-#my $test_url      = "http://www/~eserte/test/test.jpg";
-my $test_url      = "http://vran/~eserte/cgi/xearth.cgi?pos=%p&width=%w&height=%h";
+my $meteosat7_url  = "http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG";
+my $gms5_url       = "http://rsd.gsfc.nasa.gov/goesg/earth/Weather/GMS-5/jpg/vis/4km/0latest.jpg";
+my $test_url       = "http://www/~eserte/test/test.jpg";
+# XXX change the URL for the xearth.cgi here:
+my $xearth_cgi_url = "http://vran/~eserte/cgi/xearth.cgi?pos=%p&width=%w&height=%h";
 
 $SIG{INT} = \&cleanup;
 
@@ -101,6 +102,8 @@ if (is_in_path("GET") && is_in_path("djpeg") && is_in_path("pnmscale")) {
     $earthcmd{'current Meteosat-7'} = \&get_meteosat7_image;
     $earthcmd{'current GMS-5'}      = \&get_gms5_image;
 }
+
+$earthcmd{'xearth.cgi'}         = \&get_xearth_cgi_image;
 
 if (is_in_path("xearth")) {
     # tested with xearth 1.0
@@ -738,7 +741,12 @@ sub get_gms5_image {
 
 sub get_test_image {
     my(%args) = @_;
-    get_sat_image(subst_exe_string($test_url), %args, -resize => 0);
+    get_sat_image($test_url, %args);
+}
+
+sub get_xearth_cgi_image {
+    my(%args) = @_;
+    get_sat_image(subst_exe_string($xearth_cgi_url), %args, -resize => 0);
 }
 
 sub get_sat_image {
