@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Phoon.pm,v 1.9 2000/09/04 22:01:06 eserte Exp $
+# $Id: Phoon.pm,v 1.10 2002/04/16 22:27:07 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -12,7 +12,8 @@
 # WWW:  http://user.cs.tu-berlin.de/~eserte/
 #
 
-package Astro::Phoon;
+package
+    Astro::Phoon;
 
 use Time::localtime;
 use Math::Trig qw(tan pi deg2rad rad2deg atan);
@@ -21,7 +22,7 @@ use FindBin;
 
 use strict;
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
 
 # phase.c - routines to calculate the phase of the moon
 #

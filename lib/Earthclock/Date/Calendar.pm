@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Calendar.pm,v 1.3 2002/04/12 21:00:37 eserte Exp $
+# $Id: Calendar.pm,v 1.4 2002/04/16 22:26:51 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -12,12 +12,13 @@
 # WWW:  http://user.cs.tu-berlin.de/~eserte/
 #
 
-package Date::Calendar;
+package
+    Date::Calendar;
 
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 sub cal {
     my($m,$y,%args) = @_;
