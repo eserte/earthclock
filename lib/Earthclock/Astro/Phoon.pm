@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Phoon.pm,v 1.8 2000/09/04 21:56:51 eserte Exp $
+# $Id: Phoon.pm,v 1.9 2000/09/04 22:01:06 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -21,7 +21,7 @@ use FindBin;
 
 use strict;
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/);
 
 # phase.c - routines to calculate the phase of the moon
 #
@@ -457,7 +457,7 @@ sub tk_photo {
 	if ($args{-imagefile} && $args{-imagefile} =~ /\.png$/) {
 	    $imagefile = $args{-imagefile};
 	} else {
-	    $imagefile = "$FindBin::RealBin/moon.png";
+	    $imagefile = Tk::findINC("Astro/moon.png");
 	}
 
 	if ($imagefile =~ /\.gz$/) {
@@ -507,7 +507,7 @@ sub tk_photo {
 	    if ($args{-imagefile}) {
 		$imagefile = $args{-imagefile};
 	    } else {
-		$imagefile = "$FindBin::RealBin/moon.xbm.gz";
+		$imagefile = Tk::findINC("Astro/moon.xbm.gz");
 		if (!-r $imagefile) {
 		    die "No imagefile found or given";
 		}
