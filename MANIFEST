@@ -7,6 +7,7 @@ lib/Earthclock/Astro/moon.xpm.gz
 lib/Earthclock/Date/Calendar.pm
 lib/Earthclock/Win32Util.pm
 lib/Earthclock/Tk/ICalEvent.pm
+test.pl
 MANIFEST
 #install.pl
 #install.pl.config
