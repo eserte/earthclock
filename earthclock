@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.57 2003/07/09 21:40:26 eserte Exp $
+# $Id: earthclock,v 1.58 2003/11/27 00:13:04 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002,2003 Slaven Rezic. All rights reserved.
@@ -130,7 +130,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.57 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.58 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -154,8 +154,9 @@ my $date;
 my $test = 0;
 my $v;
 
-my $eumetsat_list_url = "http://www.eumetsat.de/cgi-bin/imagery/listImages.pl?m=0,c=1,o=0,s=0,f=1,a=0,n=6,d=1,v=400,p=0";
-my $eumetsat_root_url = "http://www.eumetsat.de";
+#my $eumetsat_list_url = "http://oiswww.eumetsat.org/IDDS-cgi/listImages?a=0,m=7,f=1,c=2,o=0,s=0,n=6,d=1,v=400,p=0"; # B/W
+my $eumetsat_list_url = "http://oiswww.eumetsat.org/IDDS-cgi/listImages?a=0,m=7,f=1,c=2,o=1,s=0,n=6,d=1,v=400,p=0"; # Colour
+my $eumetsat_root_url = "http://oiswww.eumetsat.org";
 my $last_eumetsat_image;# XXX not used, see below
 my $test_url       = "http://www/~eserte/test/test.jpg";
 
@@ -314,7 +315,7 @@ my $x11;
 eval {
     require X11::Protocol;
     $x11 = new X11::Protocol;
-    $x11->init_extension('SHAPE') or die;
+    $x11->init_extension('SHAPE') or die "SHAPE extension not available";
 };
 if ($@) {
     warn $@;
@@ -426,7 +427,6 @@ sub x11_shape_setup {
 	undef $shape_pixmap;
     }
 
-#    if (1) {
     $shape_pixmap = $x11->new_rsrc;
     $x11->CreatePixmap($shape_pixmap, $wrapper, 1, $width, $height);
     my $gc = $x11->new_rsrc;
@@ -437,25 +437,12 @@ sub x11_shape_setup {
 			    [(0, 0), $width, $height]);
     $x11->PolyFillArc($shape_pixmap, $gc, [0, 0, $width-1, $height-1, 0, 23040]);
 
-#      if (0) {
-#      my $data = pack("b32"x8,	"................................",
-#  				"...11......11......11......11...",
-#  				"..1111....1111....1111....1111..",
-#  				".111111..111111..111111..111111.",
-#  				".111111..111111..111111..111111.",
-#  				"..1111....1111....1111....1111..",
-#  				"...11......11......11......11...",
-#  				"...11......11......11......11...",
-#  		    );
-#      $x11->PutImage($shape_pixmap, $gc, 1, 32, 8, 0, 0, 0, 'XYPixmap', $data);
-#      }
-
-
-#      } else {
-#  	$shape_pixmap=$top->GetBitmap(q{@/tmp/test.xbm});
-#      }
 
     $x11->ShapeMask($wrapper, 'Bounding', 'Set', 0, 0, $shape_pixmap);
+    # Strange: this NOP call seems to be necessary with X11::Protocol 0.52
+    # to actually apply the new shape. It was not necessary with
+    # X11::Protocol 0.04.
+    my(%geom) = $x11->GetGeometry($wrapper);
 }
 
 sub motion {
@@ -508,9 +495,10 @@ sub draw_time {
 	(!defined $last_earth_update ||
 	 $last_earth_update+$wait<time ||
 	 $args{-forcedraw})) {
+	$img->delete if $img;
+
 	$c->Busy;
 	eval {
-	    $img->delete if $img;
 	    my $thisearthcmd = $dflt_earthcmd;
 	    if (ref $thisearthcmd ne "CODE") {
 		$thisearthcmd = subst_exe_string($thisearthcmd);
@@ -532,7 +520,7 @@ sub draw_time {
 	    }
 	    $last_earth_update=time;
 	};
-	my $err = $@;
+	my $err = @_;
 	$c->Unbusy;
 	if ($err) {
 	    die $err;
@@ -867,13 +855,15 @@ sub get_eumetsat_image {
 	$eumetsat_list_url = "file:///home/e/eserte/trash/listImages.pl?m=0,c=1,o=0,s=0,f=1,a=0,n=6,d=1,v=400,p=0";
     }
     my $resp = $ua->get($eumetsat_list_url);
-    if (!$resp->is_error) {
-	warn $resp->error_as_HTML;
+    if (!$resp->is_success) {
+	if ($resp->is_error) {
+	    warn $resp->error_as_HTML;
+	}
 	return;
     }
     my $url;
     my $content = $resp->content;
-    while($content =~ m|(/mdrs/img/jpg/DTOT_M_.*\.jpg)|g) {
+    while($content =~ m|(/~idds/images/out/.*_DTOT_.*\.jpg)|g) {
 	$url = $1;
     }
     return if (!defined $url);
@@ -886,6 +876,7 @@ sub get_eumetsat_image {
     #return if (defined $last_eumetsat_image && $url eq $last_eumetsat_image);
     warn "GET $url\n" if $v;
     $last_eumetsat_image = $url;
+    $args{-crop} = [12, 12, 589-12, 589-12];
     get_sat_image($url, -mirror => 1, %args);
 }
 
@@ -935,10 +926,10 @@ sub get_sat_image {
 	$resp = $ua->request($req, $tmpjpeg);
     }
 
-    if (!$resp->is_error) {
+    if ($resp->is_success) {
 	(my $infmt = $resp->header('Content-Type')) =~ s|^image/||;
 
-	if (exists $args{-resize} && $args{-resize} == 0) {
+	if (exists $args{-resize} && $args{-resize} == 0 && !$args{-crop}) {
 	    require File::Copy;
 	    File::Copy::cp($tmpjpeg, $args{-tmpfile});
 	} else {
@@ -949,6 +940,7 @@ sub get_sat_image {
 			     -outfmt => $outfmt,
 			     -width  => $args{-width},
 			     -height => $args{-height},
+			     -crop   => $args{-crop},
 			    );
 	    };
 	    warn $@ if $@;
@@ -1061,7 +1053,8 @@ sub resize_image {
     my(%args) = @_;
     if (eval { require Imager } &&
 	$Imager::formats{$args{-infmt}} &&
-	$Imager::formats{$args{-outfmt}}) {
+	$Imager::formats{$args{-outfmt}} &&
+	!$args{-crop}) { # -crop not supported yet with resize_image_imager
 	resize_image_imager(@_);
     } elsif (eval { require GD }) {
 	resize_image_gd(@_);
@@ -1127,11 +1120,18 @@ sub resize_image_gd {
     close IN;
     $in_img or die "Could not recognize image data in $in";
 
+    my @crop;
+    if ($args{-crop}) {
+	@crop = @{ $args{-crop} };
+    } else {
+	@crop = (0, 0, $in_img->getBounds);
+    }
+
     my $out_img = GD::Image->new($width, $height);
     $out_img or die "Could not create empty GD image";
-    $out_img->copyResized($in_img, 0, 0, 0, 0,
+    $out_img->copyResized($in_img, 0, 0, @crop[0, 1],
 			  $width, $height,
-			  $in_img->getBounds);
+			  @crop[2, 3]);
     open(OUT, ">$out") or die "Can't write to $out: $!";
     binmode OUT;
     print OUT $out_img->$output_meth();
@@ -1213,7 +1213,14 @@ sub win32_stay_on_top {
 
 sub about {
     $top->messageBox(-icon => "info",
-		     -message => "earthclock $VERSION\n(c) Slaven Rezic",
+		     -message => <<EOF,
+earthclock $VERSION
+© Slaven Rezic
+
+The satellite images are from
+http://oiswww.eumetsat.org and
+are © 2003 EUMETSAT
+EOF
 		     -type => "Ok");
 }
 
