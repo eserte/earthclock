@@ -4,30 +4,36 @@ use ExtUtils::MakeMaker;
 my $ver = MY->parse_version("earthclock");
 #my $changes_file = parse_recent_changelog();
 
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
+my %pm = map { ("lib/Earthclock/$_" => '$(INST_LIB)/Earthclock/' . $_) }
+    ("Astro/Phoon.pm",
+     "Astro/moon.png",
+     "Astro/moon.xbm.gz",
+     "Astro/moon.xpm.gz",
+     "Date/Calendar.pm",
+     "BBBikeAlarm.pm",
+     "Tk/ICalEvent.pm",
+     ($^O eq 'MSWin32' ? "Win32Util.pm" : ()),
+    );
+
 WriteMakefile
   (
    'NAME'	  => 'earthclock',
    'VERSION'      => $ver,
-   'PM' => {
-	    'lib/Earthclock/Astro/Phoon.pm'    => '$(INST_LIB)/Earthclock/Astro/Phoon.pm',
-	    'lib/Earthclock/Astro/moon.png'    => '$(INST_LIB)/Earthclock/Astro/moon.png',
-	    'lib/Earthclock/Astro/moon.xbm.gz' => '$(INST_LIB)/Earthclock/Astro/moon.xbm.gz',
-	    'lib/Earthclock/Astro/moon.xpm.gz' => '$(INST_LIB)/Earthclock/Astro/moon.xpm.gz',
-	    'lib/Earthclock/Date/Calendar.pm'  => '$(INST_LIB)/Earthclock/Date/Calendar.pm',
-	   },
+   'PM' => \%pm,
    'EXE_FILES' => ['earthclock'],
    'PREREQ_PM' => {'Tk'             => 800,
 		   ($^O ne 'MSWin32' ? ('X11::Protocol' => 0) : ()),
 		   'Tk::JPEG'       => 0,
 		   'GD'             => 0,
-		   # instead of GD one can use Imager
+		   # instead of GD one can use Imager, which creates nicer
+		   # results
 		   'LWP::UserAgent' => 0,
 		   # These are really optional, but recommended:
 		   'savevars'       => 0,
 		   'GD::Convert'    => 2,
 		   'enum'           => 0, # for BBBikeAlarm.pm
+		   # "make test" does not pass with 5.8.0:
+		   #'Net::ICal'      => 0, # for Tk::ICalEvent
 		  },
    'ABSTRACT_FROM' => 'earthclock',
    'AUTHOR' => 'Slaven Rezic (slaven@rezic.de)',
