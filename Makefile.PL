@@ -18,15 +18,16 @@ WriteMakefile
 	    'lib/Earthclock/Date/Calendar.pm'  => '$(INST_LIB)/Earthclock/Date/Calendar.pm',
 	   },
    'EXE_FILES' => ['earthclock'],
-   'PREREQ_PM' => {'Tk'             => undef,
-		   ($^O ne 'MSWin32' ? ('X11::Protocol' => undef) : ()),
-		   'Tk::JPEG'       => undef,
-		   'GD'             => undef,
-		   # optional: GD::Convert
-		   'LWP::UserAgent' => undef,
+   'PREREQ_PM' => {'Tk'             => 800,
+		   ($^O ne 'MSWin32' ? ('X11::Protocol' => 0) : ()),
+		   'Tk::JPEG'       => 0,
+		   'GD'             => 0,
+		   # optional: GD::Convert, only with GD
+		   # instead of GD one can use Imager
+		   'LWP::UserAgent' => 0,
 		  },
    'ABSTRACT_FROM' => 'earthclock',
-   'AUTHOR' => 'Slaven Rezic (eserte@cs.tu-berlin.de)',
+   'AUTHOR' => 'Slaven Rezic (slaven@rezic.de)',
   );
 
 sub MY::libscan {
