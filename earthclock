@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.44 2002/02/23 21:22:31 eserte Exp $
+# $Id: earthclock,v 1.45 2002/02/24 21:30:54 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002 Slaven Rezic. All rights reserved.
@@ -64,7 +64,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -85,7 +85,8 @@ my $v;
 
 my $meteosat7_url = "http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG";
 my $gms5_url      = "http://rsd.gsfc.nasa.gov/goesg/earth/Weather/GMS-5/jpg/vis/4km/0latest.jpg";
-my $test_url      = "http://www/~eserte/test/test.jpg";
+#my $test_url      = "http://www/~eserte/test/test.jpg";
+my $test_url      = "http://vran/~eserte/cgi/xearth.cgi?pos=%p&width=%w&height=%h";
 
 $SIG{INT} = \&cleanup;
 
@@ -381,10 +382,7 @@ sub draw_time {
 
 	my $thisearthcmd = $dflt_earthcmd;
 	if (ref $thisearthcmd ne "CODE") {
-	    $thisearthcmd =~ s/%p/$pos/g;
-	    $thisearthcmd =~ s/%w/$width/g;
-	    $thisearthcmd =~ s/%h/$height/g;
-	    $thisearthcmd =~ s/%o/$tmpfile/g;
+	    $thisearthcmd = subst_exe_string($thisearthcmd);
 	    system $thisearthcmd;
 	} else {
 	    $thisearthcmd->(-pos => $pos,
@@ -423,6 +421,15 @@ sub draw_time {
     $c->coords($c_s, $width/2, $height/2,
 	       $width/2-sin(deg2rad((60-$s)*6))*($width/2*.9),
 	       $height/2-cos(deg2rad((60-$s)*6))*($height/2*.9));
+}
+
+sub subst_exe_string {
+    my $s = shift;
+    $s =~ s/%p/$pos/g;
+    $s =~ s/%w/$width/g;
+    $s =~ s/%h/$height/g;
+    $s =~ s/%o/$tmpfile/g;
+    $s;
 }
 
 sub parse_geometry_string {
@@ -731,7 +738,7 @@ sub get_gms5_image {
 
 sub get_test_image {
     my(%args) = @_;
-    get_sat_image($test_url, %args);
+    get_sat_image(subst_exe_string($test_url), %args, -resize => 0);
 }
 
 sub get_sat_image {
@@ -762,16 +769,23 @@ sub get_sat_image {
     my $req = new HTTP::Request('GET', $url);
     my $tmpjpeg = tmpdir() . "/earthclock-$$";
     my $res = $ua->request($req, $tmpjpeg);
-    eval {
-	resize_image(-in     => $tmpjpeg,
-		     -infmt  => 'jpeg',
-		     -out    => $args{-tmpfile},
-		     -outfmt => $outfmt,
-		     -width  => $args{-width},
-		     -height => $args{-height},
-		    );
-    };
-    warn $@ if $@;
+    (my $infmt = $res->header('Content-Type')) =~ s|^image/||;
+
+    if (exists $args{-resize} && $args{-resize} == 0) {
+	require File::Copy;
+	File::Copy::cp($tmpjpeg, $args{-tmpfile});
+    } else {
+	eval {
+	    resize_image(-in     => $tmpjpeg,
+			 -infmt  => $infmt,
+			 -out    => $args{-tmpfile},
+			 -outfmt => $outfmt,
+			 -width  => $args{-width},
+			 -height => $args{-height},
+			);
+	};
+	warn $@ if $@;
+    }
 
     unlink $tmpjpeg;
 }
