@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.3 2000/02/27 01:07:08 eserte Exp $
+# $Id: earthclock,v 1.4 2000/02/27 02:43:27 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -15,44 +15,44 @@
 
 use Tk;
 use X11::Protocol;
-use C::DynaLib;
+#use C::DynaLib;
 
 #use X11::Protocol::Ext::SHAPE;
 
-$libx11 = new C::DynaLib "/usr/X11R6/lib/libX11.so";
+#  $libx11 = new C::DynaLib "/usr/X11R6/lib/libX11.so";
 
-$libptk = new C::DynaLib "/usr/local/lib/perl5/site_perl/5.005/i386-freebsd/auto/Tk/Tk.so";
+#  $libptk = new C::DynaLib "/usr/local/lib/perl5/site_perl/5.005/i386-freebsd/auto/Tk/Tk.so";
 
-warn $libx11;
-warn $libptk;
-$XReadBitmapFile = $libx11->DeclareSub({name => "XReadBitmapFile",
-					return => "i",
-					args => [PTR_TYPE,"i","p",
-						 #(PTR_TYPE)x5
-						 ("p")x5
-						]});
-#  						 PTR_TYPE,
-#  						 PTR_TYPE,
-#  						 PTR_TYPE,PTR_TYPE,PTR_TYPE]});
-$XCreateWindow = $libx11->DeclareSub({name => "XCreateWindow",
-				      return => "i",
-				      args => [PTR_TYPE,"i","i","i","i","i",
-					       "i","i",
-					       "i","i","i","i"]});
-$XOpenDisplay = $libx11->DeclareSub({name => "XOpenDisplay",
-				     return => PTR_TYPE,
-				     args => ["p"]});
-$XCloseDisplay = $libx11->DeclareSub({name => "XCloseDisplay",
-				     return => "",
-				     args => [PTR_TYPE]});
-$XWarpPointer = $libx11->DeclareSub({name => "XWarpPointer",
-				     return => "",
-				     args => [PTR_TYPE,"i","i","i","i",
-					      "I","I","i","i"]});
+#  warn $libx11;
+#  warn $libptk;
+#  $XReadBitmapFile = $libx11->DeclareSub({name => "XReadBitmapFile",
+#  					return => "i",
+#  					args => [PTR_TYPE,"i","p",
+#  						 #(PTR_TYPE)x5
+#  						 ("p")x5
+#  						]});
+#  #  						 PTR_TYPE,
+#  #  						 PTR_TYPE,
+#  #  						 PTR_TYPE,PTR_TYPE,PTR_TYPE]});
+#  $XCreateWindow = $libx11->DeclareSub({name => "XCreateWindow",
+#  				      return => "i",
+#  				      args => [PTR_TYPE,"i","i","i","i","i",
+#  					       "i","i",
+#  					       "i","i","i","i"]});
+#  $XOpenDisplay = $libx11->DeclareSub({name => "XOpenDisplay",
+#  				     return => PTR_TYPE,
+#  				     args => ["p"]});
+#  $XCloseDisplay = $libx11->DeclareSub({name => "XCloseDisplay",
+#  				     return => "",
+#  				     args => [PTR_TYPE]});
+#  $XWarpPointer = $libx11->DeclareSub({name => "XWarpPointer",
+#  				     return => "",
+#  				     args => [PTR_TYPE,"i","i","i","i",
+#  					      "I","I","i","i"]});
 
 $top = new MainWindow;
 $top->overrideredirect(1);
-$top->geometry("400x200");
+$top->geometry("200x200");
 
 my($lastx,$lasty);
 
@@ -123,13 +123,31 @@ $x->ConfigureWindow($wrapper, "x" => $X, "y" => $Y);
     $lasty = $e->Y;
 }
 
-for(1..5) {
-$label=$top->Label(-text => "bla blubber foo")->pack(-anchor => "w");
-#$label->bind("<Motion>" => \&motion);
+#  for(1..5) {
+#  $label=$top->Label(-text => "bla blubber foo")->pack(-anchor => "w");
+#  #$label->bind("<Motion>" => \&motion);
+#  }
+
+$c = $top->Canvas(-border => 0,
+		  -height => 200,
+		  -width => 200,
+		  -highlightthickness => 0)->pack;
+
+my $c_h = $c->createLine(100,100,100,50,-width=>5);
+my $c_m = $c->createLine(100,100,100,0,-width=>5);
+my $c_s = $c->createLine(100,100,100,0,-width=>3);
+
+for my $h (0..11) {
+    $c->createLine(
+		   100-sin(deg2rad((12-$h)*30))*100,
+		   100-cos(deg2rad((12-$h)*30))*100,
+		   100-sin(deg2rad((12-$h)*30))*92,
+		   100-cos(deg2rad((12-$h)*30))*92,
+		  );
+
 }
 
 $id = hex($top->id);
-$lid = hex($label->id);
 warn "***id=$id";
 $top->update;
 
@@ -142,7 +160,7 @@ $top->update;
 $pixmap = $x->new_rsrc;
 warn $pixmap;
 #warn "wrapper=".($top->wrapper);
-warn $x->CreatePixmap($pixmap, $wrapper, 1, 120, 120);
+warn $x->CreatePixmap($pixmap, $wrapper, 1, 200, 200);
 #$x->ClearArea($pixmap,0,0,120,120,0);
 my $gc = $x->new_rsrc;
 warn $x->CreateGC($gc, $pixmap, 'foreground' => $x->white_pixel);
@@ -152,9 +170,9 @@ my $delgc = $x->new_rsrc;
 warn $x->CreateGC($delgc, $pixmap, 'foreground' => $x->black_pixel);
 warn $del_gc;
 $x->PolyFillRectangle($pixmap, $delgc,
-			[(0, 0), 120, 120]);
+			[(0, 0), 200, 200]);
 
-$x->PolyFillArc($pixmap, $gc, [0, 0, 70, 70, 0, 23040]);
+$x->PolyFillArc($pixmap, $gc, [0, 0, 199, 199, 0, 23040]);
 
 my $idgc = $x->new_rsrc;
 warn $x->CreateGC($idgc, $id, 'foreground' => $x->black_pixel);
@@ -195,7 +213,27 @@ $x->ShapeMask($wrapper, 'Bounding', 'Set', 0, 0, $pixmap);
  }
 
 
-
+$top->repeat(1000, \&draw_time);
 MainLoop;
+
+use Math::Trig;
+
+sub draw_time {
+    my(@t) = localtime;
+    my($h,$m,$s) = @t[2,1,0];
+    $h=$h%12;
+    $h+=$m/60;
+    $m+=$s/60;
+
+    $c->coords($c_h, 100, 100,
+	       100-sin(deg2rad((12-$h)*30))*60,
+	       100-cos(deg2rad((12-$h)*30))*60);
+    $c->coords($c_m, 100, 100,
+	       100-sin(deg2rad((60-$m)*6))*90,
+	       100-cos(deg2rad((60-$m)*6))*90);
+    $c->coords($c_s, 100, 100,
+	       100-sin(deg2rad((60-$s)*6))*90,
+	       100-cos(deg2rad((60-$s)*6))*90);
+}
 
 __END__
