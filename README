@@ -1,0 +1,23 @@
+README: earthclock
+
+A nice clock showing the earth. It's only really nice on Unix, and
+only if you have X11::Protocol and xearth installed. Instead of
+xearth, you can fetch images directly from the internet.
+
+INSTALLATION
+
+    perl Makefile.PL
+    make all test install
+
+You can also start the program simply by typing
+
+    perl earthclock
+
+There is a cgi script named xearth.cgi which can serve the xearth
+image for workstations without the xearth.cgi program. To use it on
+the client side, you have to change the URL to the CGI in the
+earthclock script (search for "change the URL for the xearth.cgi here").
+
+AUTHOR
+
+    Slaven Rezic <slaven.rezic@berlin.de>
