@@ -22,9 +22,11 @@ WriteMakefile
 		   ($^O ne 'MSWin32' ? ('X11::Protocol' => 0) : ()),
 		   'Tk::JPEG'       => 0,
 		   'GD'             => 0,
-		   # optional: GD::Convert, only with GD
 		   # instead of GD one can use Imager
 		   'LWP::UserAgent' => 0,
+		   # These are really optional, but recommended:
+		   'savevars'       => 0,
+		   'GD::Convert'    => 2,
 		  },
    'ABSTRACT_FROM' => 'earthclock',
    'AUTHOR' => 'Slaven Rezic (slaven@rezic.de)',
