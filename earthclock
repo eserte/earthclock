@@ -1,8 +1,8 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.59 2004/04/27 21:06:42 eserte Exp $
+# $Id: earthclock,v 1.60 2004/11/06 22:53:32 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002,2003 Slaven Rezic. All rights reserved.
@@ -120,7 +120,15 @@ BEGIN {
 use strict;
 
 BEGIN {
-    my @vars = qw($width $height $pos $wait $stay_on_top $autoraise
+    if ($] < 5.006) {
+	*warnings::import = sub { $^W = 1 };
+	$INC{"warnings.pm"} = __FILE__;
+    }
+}
+use warnings;
+
+BEGIN {
+    my @vars = qw($width $height $pos $pos_time $wait $stay_on_top $autoraise
 		  $dflt_earthcmd $xearth_cgi_url);
     eval           q{ use savevars @vars };
     if ($@) { eval q{ use vars     @vars } }
@@ -134,7 +142,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 ';
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.59 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.60 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -193,6 +201,7 @@ if (ref $dflt_earthcmd eq 'CODE') { undef $dflt_earthcmd }
 
 Getopt::Long::Configure("pass_through");
 GetOptions("pos=s" => \$pos,
+	   "postime|timepos=s" => \$pos_time,
 	   "wait=i" => \$wait,
 	   "geometry=s" => \$geometry,
 	   "stayontop!" => \$stay_on_top,
@@ -202,6 +211,10 @@ GetOptions("pos=s" => \$pos,
 	   "test!" => \$test,
 	   "v!" => \$v,
 	  );
+
+if ($pos_time) {
+    set_pos_and_time($pos_time);
+}
 
 if ($test) {
     $dflt_earthcmd = $earthcmd{'test'} = \&get_test_image;
@@ -304,7 +317,7 @@ $popup_menu->command(-label => "Set alarm",
 			     eval { require $bbbikealarm; 1; }) {
 			     require File::Basename;
 			     local $FindBin::RealBin = File::Basename::dirname($bbbikealarm); # XXX hack!
-			     BBBikeAlarm::enter_alarm_small_dialog($top);
+			     BBBikeAlarm::enter_alarm_small_dialog($top, -withtext => 1);
 			 } else {
 			     $top->messageBox(-message => "Sorry, BBBikeAlarm.pm is not installed on this system");
 			     warn $@ if $@;
@@ -1200,8 +1213,14 @@ sub resize_image_imager {
 sub find_bbbikealarm_exe {
     require File::Spec;
     my $bbbikealarm;
-    foreach my $lib ("/home/e/eserte/src/bbbike", "$ENV{HOME}/src/bbbike",
-		     "/usr/local/BBBike", "/opt/bbbike", @INC) {
+    foreach my $lib (# Testing, developing:
+		     "/home/e/eserte/src/bbbike",
+		     "$ENV{HOME}/src/bbbike",
+		     "/home/slavenr/work2/bbbike",
+		     # bbbike is normally installed here:
+		     "/usr/local/BBBike", "/opt/bbbike",
+		     # earthclock version:
+		     @INC) {
 	$bbbikealarm = File::Spec->catfile($lib, "BBBikeAlarm.pm");
 	if (-r $bbbikealarm) {
 	    last;
@@ -1261,6 +1280,48 @@ EOF
 sub tkpod {
     require Tk::Pod;
     $top->Pod(-file => $0);
+}
+
+sub set_pos_and_time {
+    my($pos_time) = @_;
+    my $zone_tab_file = "/usr/share/zoneinfo/zone.tab";
+    if (!open(ZONETAB, $zone_tab_file)) {
+	warn "Can't open $zone_tab_file ($!), ignoring -postime option.\n";
+	return;
+    }
+
+    $pos_time =~ s/ /_/g;
+    my $found;
+    while(<ZONETAB>) {
+	next if /^\s*\#/;
+	chomp;
+	my(undef, $coordinates, $tz) = split /\t/;
+	my($continent,$place) = split "/", $tz;
+	if (lc $tz    eq lc $pos_time ||
+	    lc $place eq lc $pos_time) {
+	    $found = 1;
+	    $ENV{TZ} = $tz;
+	    my($lat_sgn,$lat_deg,$lat_min,$lat_sec,
+	       $lon_sgn,$lon_deg,$lon_min,$lon_sec) = $coordinates =~
+		   /^ ([+-])(\d{2})(\d{2})(\d{2})?
+                      ([+-])(\d{3})(\d{2})(\d{2})?
+                    $/x;
+	    if (!defined $lat_sgn) {
+		warn "Can't parse coordinate $coordinates, ignoring position.\n";
+	    } else {
+		my $lat = $lat_deg + $lat_min/60 + ($lat_sec||0)/3600;
+		$lat *= -1 if $lat_sgn eq '-';
+		my $lon = $lon_deg + $lon_min/60 + ($lon_sec||0)/3600;
+		$lon *= -1 if $lon_sgn eq '-';
+		$pos = "fixed,$lat,$lon";
+	    }
+	    last;
+	}
+    }
+    close ZONETAB;
+    if (!$found) {
+	warn "Can't find $pos_time is $zone_tab_file, ignoring -postime option.\n";
+    }
 }
 
 sub _get_tempfile {
