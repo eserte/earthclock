@@ -1,12 +1,15 @@
 # -*- perl -*-
 use ExtUtils::MakeMaker;
 
+my $ver = MY->parse_version("earthclock");
+#my $changes_file = parse_recent_changelog();
+
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile
   (
    'NAME'	  => 'earthclock',
-   'VERSION_FROM' => 'earthclock', # finds $VERSION
+   'VERSION'      => $ver,
    'PM' => {
 	    'lib/Earthclock/Astro/Phoon.pm'    => '$(INST_LIB)/Earthclock/Astro/Phoon.pm',
 	    'lib/Earthclock/Astro/moon.png'    => '$(INST_LIB)/Earthclock/Astro/moon.png',
@@ -31,4 +34,40 @@ sub MY::libscan {
     return '' if $path =~ m:\b(RCS|CVS|SCCS)\b: ;
     return '' if $path =~ m:\b(install\.pl)$: ;
     $path;
+}
+
+#  sub parse_recent_changelog {
+#      my $q_ver = quotemeta($ver);
+#      open(C, "Changes") or die $!;
+#      my $gather = 0;
+#      my $changes = "";
+#      while(<C>) {
+#  	if (/^$q_ver$/) {
+#  	    $gather = 1;
+#  	} elsif ($gather) {
+#  	    if (/^($|\s)/) {
+#  		$changes .= $_;
+#  	    } else {
+#  		$gather = 0;
+#  	    }
+#  	}
+#      }
+#      close C;
+#      if ($changes eq '') {
+#  	warn "No change log for version $ver found.\n";
+#      }
+#      my $changes_file = "Changes.current";
+#      open(CO, "> $changes_file") or die "Can't write to $changes_file: $!";
+#      print CO $changes;
+#      close CO;
+#      $changes_file;
+#  }
+
+sub MY::postamble {
+    <<EOF;
+
+release:	dist
+	../sf-upload/sf-upload -project ptktools -package earthclock -release \$(VERSION) -file \$(DISTVNAME).tar\$(SUFFIX) -notesfile README -changes ""
+EOF
+
 }
