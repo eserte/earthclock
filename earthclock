@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.10 2000/02/27 13:05:20 eserte Exp $
+# $Id: earthclock,v 1.11 2000/02/27 18:21:09 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -28,6 +28,7 @@ my $geometry;
 my $stays_on_top;
 my $earthcmd = "xearth -pos %p -size %w,%h -gif > %o";
 my $tmpfile = "/tmp/earth-$$.gif";
+my $date;
 
 GetOptions("pos=s" => \$pos,
 	   "wait=i" => \$wait,
@@ -38,13 +39,19 @@ GetOptions("pos=s" => \$pos,
 
 my($x,$y) = (0,0);
 if (defined $geometry) {
-    ($x,$y,$width,$height) = parse_geometry_string($geometry);
+    my(@p) = parse_geometry_string($geometry);
+    if (defined $p[0] and defined $p[1]) {
+	($x, $y) = @p[0, 1];
+    }
+    if (defined $p[2] and defined $p[3]) {
+	($width, $height) = @p[2,3];
+    }
 }
 
 my $top = new MainWindow;
 my $id = hex($top->id);
 $top->overrideredirect(1);
-$top->geometry($width."x".$height);
+$top->geometry($width."x".$height."+".$x."+".$y);
 
 my($lastx,$lasty);
 my $last_earth_update;
@@ -56,6 +63,9 @@ $top->bind("<ButtonPress-1>" => sub { $top->raise; });
 $top->bind("<ButtonRelease-1>" => sub { undef $lastx });
 
 my $popup_menu = $top->Menu(-tearoff => 0);
+$popup_menu->command(-label => "");
+my $date_entry = $popup_menu->index("last");
+$popup_menu->separator;
 $popup_menu->command(-label => "Force earth update",
 		     -command => sub { undef $last_earth_update },
 		    );
@@ -135,7 +145,7 @@ MainLoop;
 sub motion{
     my $w = shift;
     my $e = $w->XEvent;
-    return unless $e->s eq 'B1-';
+    return unless $e->s =~ /B1-/;
     if (defined $lastx) {
 	my(%geom) = $x11->GetGeometry($wrapper);
 	my $X = $geom{x}+$e->X-$lastx;
@@ -173,6 +183,16 @@ sub draw_time {
 	$last_earth_update=time;
     }
 
+    if (!defined $date || $date ne scalar localtime) {
+	$date = scalar localtime;
+	my(@d) = localtime;
+	$popup_menu->entryconfigure
+	    ($date_entry,
+	     -label => sprintf("%s %4d-%02d-%02d",
+			       (qw(Sun Mon Tue Wed Thu Fri Sat))[$d[6]],
+			       1900+$d[5], 1+$d[4], $d[3]));
+    }
+
     $c->coords($c_h, $width/2, $height/2,
 	       $width/2-sin(deg2rad((12-$h)*30))*($width/2*.6),
 	       $height/2-cos(deg2rad((12-$h)*30))*($height/2*.6));
@@ -186,7 +206,7 @@ sub draw_time {
 
 sub parse_geometry_string {
     my $geometry = shift;
-    my @extends = (0, 0, 0, 0);
+    my @extends;
     if ($geometry =~ /([-+]?\d+)x([-+]?\d+)/) {
 	$extends[2] = $1;
 	$extends[3] = $2;
