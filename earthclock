@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.1 2000/02/26 23:31:49 eserte Exp $
+# $Id: earthclock,v 1.2 2000/02/27 00:01:09 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -53,10 +53,48 @@ $XWarpPointer = $libx11->DeclareSub({name => "XWarpPointer",
 $top = new MainWindow;
 $top->geometry("400x200");
 
+my($lastx,$lasty);
+
 $top->bind("<Motion>" => \&motion);
+$top->bind("<ButtonRelease-1>" => sub { warn "rel"; undef $lastx });
 
 sub motion{
-    warn "@_;"
+    my $w = shift;
+    my $e = $w->XEvent;
+    return unless $e->s eq 'B1-';
+    if (defined $lastx) {
+	my $geom = $top->geometry;
+	if ($geom =~ /([+-]\d+)([+-]\d+)/) {
+	    ($X,$Y) = ($1,$2);
+	} else {
+	    warn $geom . "?";
+	    return;
+	}
+        my($newx, $newy) = ($X,$Y);
+	if ($newx>=0) {
+	    $newx+=$e->X-$lastx;
+	    $newx=0 if ($newx<0);
+	    $newx="+$newx";
+	} else {
+	    $newx-=$e->X-$lastx;
+	    $newx="-0" if ($newx>0);
+	}
+	if ($newy>=0) {
+	    $newy+=$e->Y-$lasty;
+	    $newy=0 if ($newy<0);
+	    $newy="+$newy";
+	} else {
+	    $newy-=$e->Y-$lasty;
+	    $newy="-0" if ($newy>0);
+	}
+warn "(".$top->X.",".$top->Y.")=>($newx,$newy)";
+	#$top->MoveResizeWindow($newx,$newy,400,200);
+	$top->geometry("$newx$newy");
+	#$top->MoveResizeWindow($newx,$newy);
+#$top->idletasks;
+    }
+    $lastx = $e->X;
+    $lasty = $e->Y;
 }
 
 for(1..5) {
@@ -94,7 +132,7 @@ warn $del_gc;
 $x->PolyFillRectangle($pixmap, $delgc,
 			[(0, 0), 120, 120]);
 
-$x->PolyFillArc($pixmap, $gc, [20, 20, 80, 80, 0, 23040]);
+$x->PolyFillArc($pixmap, $gc, [0, 0, 70, 70, 0, 23040]);
 
 my $idgc = $x->new_rsrc;
 warn $x->CreateGC($idgc, $id, 'foreground' => $x->black_pixel);
