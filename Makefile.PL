@@ -1,3 +1,4 @@
+# -*- perl -*-
 use ExtUtils::MakeMaker;
 
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
@@ -15,9 +16,10 @@ WriteMakefile
 	   },
    'EXE_FILES' => ['earthclock'],
    'PREREQ_PM' => {'Tk'             => undef,
-		   'X11::Protocol'  => undef,
+		   ($^O ne 'MSWin32' ? ('X11::Protocol' => undef) : ()),
 		   'Tk::JPEG'       => undef,
 		   'GD'             => undef,
+		   # optional: GD::Convert
 		   'LWP::UserAgent' => undef,
 		  },
    'ABSTRACT_FROM' => 'earthclock',
