@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: ICalEvent.pm,v 1.1 2002/01/31 23:26:45 eserte Exp $
+# $Id: ICalEvent.pm,v 1.2 2002/01/31 23:48:17 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2002 Slaven Rezic. All rights reserved.
@@ -12,13 +12,13 @@
 # WWW:  http://www.rezic.de/eserte/
 #
 
-package Tk::IcalEvent;
+package Tk::ICalEvent;
 use strict;
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 
 use base qw(Tk::Frame);
-Construct Tk::Widget 'IcalEvent';
+Construct Tk::Widget 'ICalEvent';
 
 use Net::ICal;
 
@@ -27,27 +27,29 @@ sub Populate {
     $w->SUPER::Populate($args);
 
     $w->Component(Label => "Title")->pack;
-    $w->Component(Text => "Text", -scrollbars => "oe",
-		  -width => 40, -height => 5)->pack(-fill => "both",
-						    -expand => 1);
+    my $txt = $w->Scrolled("Text", -scrollbars => "oe",
+			   -width => 40, -height => 5)->pack(-fill => "both",
+							     -expand => 1);
+    $w->Advertise(Text => $txt);
+
     my $f = $w->Frame->pack(-fill => "x");
     # XXX use callbacks with these as default functions:
     $f->Button(-text => "OK",
 	       -command => sub {
 		   return unless $w->{Current};
 		   $w->save_all;
-		   $w->withdraw;
+		   $w->toplevel->withdraw;
 	       })->pack(-side => "left");
     $f->Button(-text => "Delete",
-	       -comannd => sub {
+	       -command => sub {
 		   return unless $w->{Current};
 		   $w->delete_current;
-		   $w->withdraw;
+		   $w->toplevel->withdraw;
 	       })->pack(-side => "left");
     $f->Button(-text => "Cancel",
 	       -command => sub {
 		   $w->unset;
-		   $w->withdraw;
+		   $w->toplevel->withdraw;
 	       })->pack(-side => "left");
 
     $w->ConfigSpecs
@@ -60,12 +62,15 @@ sub icalfile {
     if (@_) {
 	$w->{ICalFile} = $_[0];
 
-	open CALFILE, "< $w->{ICalFile}" or die "Can't load file: $!";
-        undef $/; # slurp mode
-        # FIXME: this is currently returning "not a valid ical stream"
-        # from data saved out by the program itself. 
-        $w->{ICal} = Net::ICal::Component->new_from_ical(<CALFILE>);
-        close CALFILE;
+	if (open CALFILE, "< $w->{ICalFile}") {
+	    undef $/; # slurp mode
+	    # FIXME: this is currently returning "not a valid ical stream"
+	    # from data saved out by the program itself. 
+	    $w->{ICal} = Net::ICal::Component->new_from_ical(<CALFILE>);
+	    close CALFILE;
+	} else {
+	    $w->{ICal} = new Net::ICal::Calendar events => [];
+	}
     }
     $w->{ICalFile};
 }
@@ -79,31 +84,37 @@ sub set_date {
 
     my @events = @{ $w->{ICal}->events };
     for (@events) {
-	if ($_->dtstart =~ /^$date/) {
+	if ($_->dtstart->as_ical =~ /^:?$date/) {
 	    $w->{Current} = $_;
 	    last;
 	}
     }
+
     if (!$w->{Current}) {
 	$w->{Current} = new Net::ICal::Event
-	    dtstart => Net::ICal::Item->new($date),
+	    dtstart => Net::ICal::Time->new(ical => $date),
 	    ;
 	# XXX hackish...!
 	push @events, $w->{Current};
 	$w->{ICal} = new Net::ICal::Calendar events => \@events;
     }
 
-    $w->Subwidget("Title")->configure(-text => $w->{Current}->dtstart);
-    $w->Subwidget("Text")->insert(0, $w->{Current}->comment);
+    $w->Subwidget("Title")->configure(-text => $w->{Current}->dtstart->as_ical);
+    $w->Subwidget("Text")->insert("1.0", $w->{Current}->comment->{'content'})
+	if $w->{Current}->comment;
 
-    $w->deiconify;
-    $w->raise;
+    $w->toplevel->deiconify;
+    $w->toplevel->raise;
 }
 
 sub save_all {
     my($w) = @_;
 
     return if !defined $w->{ICalFile};
+
+    if ($w->{Current}) {
+	$w->{Current}->comment($w->Subwidget("Text")->get("1.0", "end"));
+    }
 
     open CALFILE, "> $w->{ICalFile}" or die "Can't save file: $!";
     print CALFILE $w->{ICal}->as_ical;
@@ -114,7 +125,7 @@ sub unset {
     my $w = shift;
     delete $w->{Current};
     $w->Subwidget("Title")->configure(-text => "");
-    $w->Subwidget("Text")->delete(0, "end");
+    $w->Subwidget("Text")->delete("1.0", "end");
 }
 
 1;
