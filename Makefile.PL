@@ -27,6 +27,7 @@ WriteMakefile
 		   # These are really optional, but recommended:
 		   'savevars'       => 0,
 		   'GD::Convert'    => 2,
+		   'enum'           => 0, # for BBBikeAlarm.pm
 		  },
    'ABSTRACT_FROM' => 'earthclock',
    'AUTHOR' => 'Slaven Rezic (slaven@rezic.de)',
