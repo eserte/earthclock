@@ -68,17 +68,19 @@ sub MY::libscan {
 #  }
 
 sub MY::postamble {
-    <<EOF .
+    my $postamble = "";
 
-release:	dist
-	../sf-upload/sf-upload -project ptktools -package earthclock -release \$(VERSION) -file \$(DISTVNAME).tar\$(SUFFIX) -notesfile README -changes ""
+    if (defined $ENV{USER} && $ENV{USER} eq 'eserte' && $^O =~ /bsd/i && -f "../perl.release.mk") {
+	$postamble .= <<'EOF';
 
-EOF
-    # disabled:
-    (0 && defined $ENV{USER} && $ENV{USER} eq 'eserte' ?
-     <<EOF : "")
 rsync-xearth.cgi:
 	rsync -Pvzr xearth.cgi user.cs.tu-berlin.de:www/cgi/xearth.cgi
 
+.include "../perl.release.mk"
+.include "../perl.cvs.mk"
+
 EOF
+    }
+
+    $postamble;
 }
