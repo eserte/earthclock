@@ -64,10 +64,17 @@ sub MY::libscan {
 #  }
 
 sub MY::postamble {
-    <<EOF;
+    <<EOF .
 
 release:	dist
 	../sf-upload/sf-upload -project ptktools -package earthclock -release \$(VERSION) -file \$(DISTVNAME).tar\$(SUFFIX) -notesfile README -changes ""
-EOF
 
+EOF
+    # disabled:
+    (0 && defined $ENV{USER} && $ENV{USER} eq 'eserte' ?
+     <<EOF : "")
+rsync-xearth.cgi:
+	rsync -Pvzr xearth.cgi user.cs.tu-berlin.de:www/cgi/xearth.cgi
+
+EOF
 }
