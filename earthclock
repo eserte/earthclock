@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.51 2003/04/25 21:17:25 eserte Exp $
+# $Id: earthclock,v 1.52 2003/04/25 21:44:43 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002,2003 Slaven Rezic. All rights reserved.
@@ -64,7 +64,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.51 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -79,14 +79,15 @@ $width = 200  unless defined $width && $width >= 30;
 $height = 200 unless defined $height && $height >= 30;
 $xearth_cgi_url = "http://www/~eserte/cgi/xearth.cgi?pos=%p&width=%w&height=%h"
     unless defined $xearth_cgi_url;
+
+my %tmpfiles;
+my $tmpfile = _get_tempfile("earth-$$.image");
+
 my $geometry;
-my $tmpfile = tmpdir() . "/earth-$$.image";
 my $date;
 my $test = 0;
 my $v;
 
-my $meteosat7_url  = "http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG";
-my $gms5_url       = "http://rsd.gsfc.nasa.gov/goesg/earth/Weather/GMS-5/jpg/vis/4km/0latest.jpg";
 my $eumetsat_list_url = "http://www.eumetsat.de/cgi-bin/imagery/listImages.pl?m=0,c=1,o=0,s=0,f=1,a=0,n=6,d=1,v=400,p=0";
 my $eumetsat_root_url = "http://www.eumetsat.de";
 my $last_eumetsat_image;# XXX not used, see below
@@ -98,18 +99,6 @@ $SIG{INT} = \&cleanup;
 
 my %earthcmd;
 $earthcmd{'current Eumetsat'} = \&get_eumetsat_image;
-
-# XXX can be deleted:
-#  if (is_in_path("GET") && is_in_path("djpeg") && is_in_path("pnmscale")) {
-#      # satellite images...
-#      #    $earthcmd{'current Meteosat-7'} = "GET $meteosat7_url | djpeg -pnm | pnmscale -w %w -h %h > %o";
-
-#      # not tested
-#      #    $earthcmd{'current GMS-5'} = "GET $gms5_url | djpeg -pnm | pnmscale -w %w -h %h > %o";
-#  } else {
-#    $earthcmd{'current Meteosat-7'} = \&get_meteosat7_image;
-#    $earthcmd{'current GMS-5'}      = \&get_gms5_image;
-#}
 
 $earthcmd{'xearth.cgi'}         = \&get_xearth_cgi_image;
 
@@ -781,16 +770,6 @@ sub show_cal {
 						     $next_year) });
 }
 
-sub get_meteosat7_image {
-    my(%args) = @_;
-    get_sat_image($meteosat7_url, %args);
-}
-
-sub get_gms5_image {
-    my(%args) = @_;
-    get_sat_image($gms5_url, %args);
-}
-
 sub get_test_image {
     my(%args) = @_;
     get_sat_image($test_url, %args);
@@ -834,7 +813,7 @@ sub get_eumetsat_image {
     #return if (defined $last_eumetsat_image && $url eq $last_eumetsat_image);
     warn "GET $url\n" if $v;
     $last_eumetsat_image = $url;
-    get_sat_image($url, %args);
+    get_sat_image($url, -mirror => 1, %args);
 }
 
 sub get_ua {
@@ -866,14 +845,23 @@ sub get_sat_image {
 		$outfmt = "jpeg";
 		1;
 	    }) {
-		warn "Cannot handle xpm, png and jpeg images";
+		warn "Cannot handle xpm, png or jpeg images";
 	    }
 	}
     }
 
-    my $req = new HTTP::Request('GET', $url);
-    my $tmpjpeg = tmpdir() . "/earthclock-$$";
-    my $resp = $ua->request($req, $tmpjpeg);
+    (my $safe_url = $url) =~ s|[^a-zA-Z0-9.]|_|g;
+    my $tmpjpeg = tmpdir() . "/earth-$$-" . $safe_url;
+    $tmpfiles{$tmpjpeg}++;
+
+    my $resp;
+    if ($args{-mirror} && -e $tmpjpeg) {
+	$resp = $ua->mirror($url, $tmpjpeg);
+    } else {
+	my $req = new HTTP::Request('GET', $url);
+	$resp = $ua->request($req, $tmpjpeg);
+    }
+
     if ($resp->is_success) {
 	(my $infmt = $resp->header('Content-Type')) =~ s|^image/||;
 
@@ -892,8 +880,6 @@ sub get_sat_image {
 	    };
 	    warn $@ if $@;
 	}
-
-	unlink $tmpjpeg;
     } else {
 	warn $resp->error_as_HTML;
     }
@@ -1146,8 +1132,22 @@ sub win32_stay_on_top {
     }
 }
 
+sub _get_tempfile {
+    my $base = shift;
+    my $tmpfile;
+    if (eval { require File::Temp }) {
+	(undef, $tmpfile) = File::Temp::tempfile(UNLINK => 1);
+    } else {
+	$tmpfile = tmpdir() . "/$base";
+	$tmpfiles{$tmpfile}++;
+    }
+    $tmpfile;
+}
+
 sub cleanup {
-    unlink $tmpfile;
+    for my $tmpfile (keys %tmpfiles) {
+	unlink $tmpfile;
+    }
     exit 0;
 }
 
