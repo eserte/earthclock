@@ -7,11 +7,11 @@ WriteMakefile
    'NAME'	  => 'earthclock',
    'VERSION_FROM' => 'earthclock', # finds $VERSION
    'PM' => {
-	    'Astro/Phoon.pm'    => '$(INST_LIB)/Astro/Phoon.pm',
-	    'Astro/moon.png'    => '$(INST_LIB)/Astro/moon.png',
-	    'Astro/moon.xbm.gz' => '$(INST_LIB)/Astro/moon.xbm.gz',
-	    'Astro/moon.xpm.gz' => '$(INST_LIB)/Astro/moon.xpm.gz',
-	    'Date/Calendar.pm'  => '$(INST_LIB)/Date/Calendar.pm',
+	    'lib/Earthclock/Astro/Phoon.pm'    => '$(INST_LIB)/Earthclock/Astro/Phoon.pm',
+	    'lib/Earthclock/Astro/moon.png'    => '$(INST_LIB)/Earthclock/Astro/moon.png',
+	    'lib/Earthclock/Astro/moon.xbm.gz' => '$(INST_LIB)/Earthclock/Astro/moon.xbm.gz',
+	    'lib/Earthclock/Astro/moon.xpm.gz' => '$(INST_LIB)/Earthclock/Astro/moon.xpm.gz',
+	    'lib/Earthclock/Date/Calendar.pm'  => '$(INST_LIB)/Earthclock/Date/Calendar.pm',
 	   },
    'EXE_FILES' => ['earthclock'],
    'PREREQ_PM' => {'Tk'             => undef,
