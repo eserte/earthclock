@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.27 2000/09/04 22:21:02 eserte Exp $
+# $Id: earthclock,v 1.28 2000/09/04 23:35:49 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -39,7 +39,7 @@ use lib "$FindBin::RealBin";
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/);
 
 my $pos = "fixed,53,13";
 my $wait = 30*60;
@@ -335,6 +335,18 @@ sub create_cal_fail_safe {
     warn $@ if $@;
 }
 
+sub _cal {
+    my($m,$y) = @_;
+    my @r;
+    eval {
+	require Date::Calendar;
+	@r = split(/\n/, Date::Calendar::cal($m, $y));
+	push @r, ("") x (8 - scalar @r); # force 8 lines
+    };
+    return @r if (@r);
+    `cal $m $y`;
+}
+
 sub create_cal {
 
     require Astro::Phoon;
@@ -342,8 +354,7 @@ sub create_cal {
     my $tl = $top->Toplevel;
     $tl->title("Calendar");
 
-    # get width and height
-    my $cal = `cal 12 2000`; # sample data with 6 weeks
+    my(@cal) = _cal(12, 2000); # sample data with 6 weeks
 
     my $fixf;
     if (!$top->{FixedFont}) {
@@ -360,9 +371,10 @@ sub create_cal {
 	$fixf = $top->{FixedFont};
     }
 
+    # get width and height
     my $maxlen = 0;
     my $lines = 0;
-    foreach(split(/\n/,$cal)) {
+    foreach (@cal) {
 	$maxlen = length($_) if $maxlen < length($_);
 	$lines++;
     }
@@ -425,7 +437,7 @@ sub show_cal {
 
     my $current_date;
 
-    chomp(my @cal = `cal $month $year`);
+    chomp(my @cal = _cal($month, $year));
     my $start_y = int(($c->cget(-height) - scalar(@cal)*$c->{LineHeight})/2);
 
     my $month_text = shift @cal;
