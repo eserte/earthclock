@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.53 2003/04/25 21:49:09 eserte Exp $
+# $Id: earthclock,v 1.54 2003/04/25 21:51:29 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002,2003 Slaven Rezic. All rights reserved.
@@ -130,7 +130,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.53 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.54 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -1111,7 +1111,13 @@ sub resize_image_gd {
 	 'ppm' => (defined &GD::Image::ppm ? 'ppm' : undef),
 	}->{$outfmt};
     if (!$constructor || !$output_meth) {
-	die "No constructor or output method found";
+	if (!$constructor) {
+	    warn "No constructor found for $infmt.\n";
+	}
+	if (!$output_meth) {
+	    warn "No output method found for $outfmt. Please consider to install GD::Convert from CPAN.\n";
+	}
+	die;
     }
 
     warn "GD constructor $constructor, output method $output_meth\n" if $v;
