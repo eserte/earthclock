@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.33 2001/05/05 21:46:38 eserte Exp $
+# $Id: earthclock,v 1.34 2001/05/05 23:36:12 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001 Slaven Rezic. All rights reserved.
@@ -54,7 +54,7 @@ BEGIN {
 
 use vars qw($VERSION $sizes);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -733,7 +733,6 @@ sub set_alarm {
     my $ev = $w->XEvent;
     my($x,$y) = ($ev->x - $w->width/2, $ev->y - $w->height/2);
     my $angle = atan2($y, $x);
-    warn "x=$x y=$y angle=$angle\n";
     use constant PI => 3.141592653;
     $angle = 2*PI+$angle if $angle < 0; # everything's positive
     my $min = 30*$angle/PI;
@@ -753,7 +752,7 @@ sub set_alarm {
     }
     @now = localtime $time;
     my $time = sprintf "%02d:%02d", $now[2], $now[1];
-    system("perl /home/e/eserte/src/bbbike/BBBikeAlarm.pm -tk -time $time &");
+    system("perl /home/e/eserte/src/bbbike/BBBikeAlarm.pm -ask -tk -time $time &");
 }
 
 # REPO BEGIN
