@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.12 2000/02/27 23:23:21 eserte Exp $
+# $Id: earthclock,v 1.13 2000/02/29 00:00:34 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -26,16 +26,33 @@ my $width = 200;
 my $height = 200;
 my $geometry;
 my $stay_on_top;
-my $earthcmd = "xearth -pos %p -size %w,%h -gif > %o";
+my %earthcmd =
+    (
+     # tested with xearth 1.0
+     'xearth' => "xearth -nolabel -nomarkers -pos %p -size %w,%h -gif > %o",
+
+     # tested with xglobe 0.2
+     'xglobe' => "cd /tmp; xglobe -nolabel -nomarkers -pos %p -size %w,%h -dump; mv xglobe-dump.bmp %o",
+     # worked 2000-02-25
+     'current meteosat' => "GET http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG | djpeg -pnm | pnmscale -w %w -h %h > %o",
+    );
+#$earthcmd = "djpeg -pnm /home/e/eserte/doc/met/DTOT.JPG | pnmscale -w %w -h %h > %o";
+#$earthcmd = "GET http://www/~eserte/doc/met/DTOT.JPG | djpeg -pnm | pnmscale -w %w -h %h > %o";
+#$earthcmd = "GET http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG | djpeg -pnm | pnmscale -w %w -h %h > %o";
 my $tmpfile = "/tmp/earth-$$.gif";
 my $date;
+my $dflt_earthcmd;
 
 GetOptions("pos=s" => \$pos,
 	   "wait=i" => \$wait,
 	   "geometry=s" => \$geometry,
 	   "stayontop!" => \$stay_on_top,
-	   "earthcmd=s" => \$earthcmd,
+	   "earthcmd=s" => \$dflt_earthcmd,
 	  );
+
+if (!$dflt_earthcmd) {
+    $dflt_earthcmd = $earthcmd{'xearth'};
+}
 
 my($x,$y) = (0,0);
 if (defined $geometry) {
@@ -69,6 +86,14 @@ $popup_menu->separator;
 $popup_menu->command(-label => "Force earth update",
 		     -command => sub { undef $last_earth_update },
 		    );
+foreach (keys %earthcmd) {
+    my $l = $_;
+    $popup_menu->command(-label => "· $l",
+			 -command => sub {
+			     $dflt_earthcmd = $earthcmd{$l};
+			     undef $last_earth_update;
+			 });
+}
 $popup_menu->checkbutton(-label => "Stay on top",
 			 -variable => \$stay_on_top,
 			);
@@ -164,13 +189,13 @@ sub draw_time {
     if (!defined $last_earth_update ||
 	$last_earth_update+$wait<time) {
 	$img->delete if $img;
-	my $thisearthcmd = $earthcmd;
+	my $thisearthcmd = $dflt_earthcmd;
 	$thisearthcmd =~ s/%p/$pos/g;
 	$thisearthcmd =~ s/%w/$width/g;
 	$thisearthcmd =~ s/%h/$height/g;
 	$thisearthcmd =~ s/%o/$tmpfile/g;
 	system $thisearthcmd;
-	if (-r $tmpfile) {
+	if (-r $tmpfile and -s $tmpfile) {
 	    $img = $top->Photo(-file => $tmpfile);
 	    if (!defined $c_img) {
 		$c_img = $c->createImage($width/2, $height/2, -tags => "img");
