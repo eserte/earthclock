@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.9 2000/02/27 12:09:39 eserte Exp $
+# $Id: earthclock,v 1.10 2000/02/27 13:05:20 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -27,6 +27,7 @@ my $height = 200;
 my $geometry;
 my $stays_on_top;
 my $earthcmd = "xearth -pos %p -size %w,%h -gif > %o";
+my $tmpfile = "/tmp/earth-$$.gif";
 
 GetOptions("pos=s" => \$pos,
 	   "wait=i" => \$wait,
@@ -81,7 +82,9 @@ my $c = $top->Canvas(-border => 0,
 		     -highlightthickness => 0)->pack;
 
 my $stay_above_after;
+# XXX not perfect:
 $c->Tk::bind("<Visibility>" => sub {
+warn "vis";
 	       if ($stays_on_top) {
 		   if ($stay_above_after) {
 		       $stay_above_after->cancel;
@@ -153,7 +156,6 @@ sub draw_time {
     if (!defined $last_earth_update ||
 	$last_earth_update+$wait<time) {
 	$img->delete if $img;
-	my $tmpfile = "/tmp/earth.gif";
 	my $thisearthcmd = $earthcmd;
 	$thisearthcmd =~ s/%p/$pos/g;
 	$thisearthcmd =~ s/%w/$width/g;
@@ -194,6 +196,10 @@ sub parse_geometry_string {
 	$extends[1] = $2;
     }
     @extends;
+}
+
+END {
+    unlink $tmpfile;
 }
 
 __END__
