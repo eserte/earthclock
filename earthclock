@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.43 2002/02/23 11:15:01 eserte Exp $
+# $Id: earthclock,v 1.44 2002/02/23 21:22:31 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002 Slaven Rezic. All rights reserved.
@@ -64,7 +64,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -81,6 +81,7 @@ my $geometry;
 my $tmpfile = tmpdir() . "/earth-$$.gif";
 my $date;
 my $test = 0;
+my $v;
 
 my $meteosat7_url = "http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG";
 my $gms5_url      = "http://rsd.gsfc.nasa.gov/goesg/earth/Weather/GMS-5/jpg/vis/4km/0latest.jpg";
@@ -110,6 +111,8 @@ if (is_in_path("xglobe")) {
     $earthcmd{'xglobe'} = "cd " . tmpdir() . "; xglobe -nolabel -nomarkers -pos %p -size %w,%h -dump; mv xglobe-dump.bmp %o";
 }
 
+if (ref $dflt_earthcmd eq 'CODE') { undef $dflt_earthcmd }
+
 Getopt::Long::Configure("pass_through");
 GetOptions("pos=s" => \$pos,
 	   "wait=i" => \$wait,
@@ -117,6 +120,8 @@ GetOptions("pos=s" => \$pos,
 	   "stayontop!" => \$stay_on_top,
 	   "earthcmd=s" => \$dflt_earthcmd,
 	   "autoraise!" => \$autoraise,
+	   "test!" => \$test,
+	   "v!" => \$v,
 	  );
 
 if ($test) {
@@ -223,7 +228,7 @@ $top->bind("<ButtonPress-3>" => sub {
 	   });
 $top->bind("<Enter>" => sub {
 	       if ($autoraise) { $top->raise }
-	       $top->focus; # XXX don't work
+	       #$top->focus; # XXX don't work
 	   });
 
 my($wrapper) = $top->wrapper;
@@ -732,20 +737,21 @@ sub get_test_image {
 sub get_sat_image {
     my($url, %args) = @_;
 
-    require LWP::UserAgent;
-    require GD;
+    return unless eval { require LWP::UserAgent };
 
     my $outfmt = "xpm";
-    if (!eval {
-	require Tk::JPEG;
-	$outfmt = "jpeg";
-	1;
-    }) {
-	eval {
-	    require Tk::PNG;
-	    $outfmt = "png";
+    if (!eval {	require GD::Convert; 1 }) {
+	if (!eval {
+	    require Tk::JPEG;
+	    $outfmt = "jpeg";
 	    1;
-	};
+	}) {
+	    eval {
+		require Tk::PNG;
+		$outfmt = "png";
+		1;
+	    };
+	}
     }
 
     my $ua = new LWP::UserAgent;
@@ -904,11 +910,15 @@ sub resize_image {
 	 'jpeg'=> 'jpeg',
 	 'gd'  => 'gd',
 	 'gd2' => 'gd2',
-	 'gif' => 'gif', # for old GD's
+	 'gif' => (defined &GD::Image::gif ? 'gif' : undef), # for old GD's
+	 'xpm' => (defined &GD::Image::xpm ? 'xpm' : undef),
+	 'ppm' => (defined &GD::Image::ppm ? 'ppm' : undef),
 	}->{$outfmt};
     if (!$constructor || !$output_meth) {
 	die "No constructor or output method found";
     }
+
+    warn "GD constructor $constructor, output method $output_meth\n" if $v;
 
     require GD;
 
