@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.52 2003/04/25 21:44:43 eserte Exp $
+# $Id: earthclock,v 1.53 2003/04/25 21:49:09 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002,2003 Slaven Rezic. All rights reserved.
@@ -26,6 +26,72 @@ the WWW and displayed.
 
 Additionally, it is possible to show a calendar of months with the
 phases of the moon.
+
+The clock can be moved by clicking the left mouse button and moving
+the window.
+
+=head2 Popup Menu
+
+The popup menu is accessed by clicking on the right mouse button.
+
+=over
+
+=item Current date
+
+By clicking on the current date a calendar window will pop up.
+
+=item Force earth update
+
+Forces an update of the earth image. Normally the update is done every
+half an hour.
+
+=item current Eumetsat
+
+Fetch the current satellite image from the eumetsat site
+(L<http://www.eumetsat.de>).
+
+=item xearth.cgi
+
+Get the image of the earth from an xearth.cgi script (not publically
+available).
+
+=item xearth
+
+Get the image of the earth from the external L<xearth(1)> program.
+This menu item is only available if xearth is installed on the system.
+
+=item xglobe
+
+Get the image of the earth from the external L<xglobe(1)> program.
+This menu item is only available if xglobe is installed on the system.
+
+=item Size
+
+Change the size of the earth. This will cause a refetch of the image.
+
+=item Stay on top
+
+(Does not work yet --- the window is always on top of all other windows)
+
+=item Autoraise
+
+(Does not work yet --- the window is always on top of all other windows)
+
+=item Alarm list
+
+It is possible to set a short-term alarm (up to 60 minutes) by
+clicking with the middle mouse button on the clock. This menu item
+shows all pending alarms on this host.
+
+=item Help
+
+Display an "About" dialog or the documentation via L<Tk::Pod>.
+
+=item Exit
+
+Exit the program.
+
+=back
 
 =head1 CONFIGURATION
 
@@ -64,7 +130,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.53 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -219,6 +285,14 @@ $popup_menu->command(-label => "Alarm list",
 			     system("perl $bbbikealarm -tk -list &");
 			 }
 		     });
+
+{
+    my $help_menu = $popup_menu->cascade(-label => "Help");
+    $help_menu->command(-label => "About",
+			-command => \&about);
+    $help_menu->command(-label => "Documentation",
+			-command => \&tkpod);
+}
 
 $popup_menu->command(-label => "Exit",
 		     -command => sub { $top->destroy },
@@ -1130,6 +1204,17 @@ sub win32_stay_on_top {
     } else {
 	$callAPI->(HWND_NOTOPMOST);
     }
+}
+
+sub about {
+    $top->messageBox(-icon => "info",
+		     -message => "earthclock $VERSION\n(c) Slaven Rezic",
+		     -type => "Ok");
+}
+
+sub tkpod {
+    require Tk::Pod;
+    $top->Pod(-file => $0);
 }
 
 sub _get_tempfile {
