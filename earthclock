@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.2 2000/02/27 00:01:09 eserte Exp $
+# $Id: earthclock,v 1.3 2000/02/27 01:07:08 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -51,6 +51,7 @@ $XWarpPointer = $libx11->DeclareSub({name => "XWarpPointer",
 					      "I","I","i","i"]});
 
 $top = new MainWindow;
+$top->overrideredirect(1);
 $top->geometry("400x200");
 
 my($lastx,$lasty);
@@ -58,40 +59,65 @@ my($lastx,$lasty);
 $top->bind("<Motion>" => \&motion);
 $top->bind("<ButtonRelease-1>" => sub { warn "rel"; undef $lastx });
 
+my($wrapper) = $top->wrapper;
+
+$x = new X11::Protocol;
+$x->init_extension('SHAPE') or die;
+
+$width=0;
+$height=0;
+$bitmap=0;
+$xhot=0;
+$yhot=0;
+
 sub motion{
     my $w = shift;
     my $e = $w->XEvent;
     return unless $e->s eq 'B1-';
     if (defined $lastx) {
-	my $geom = $top->geometry;
-	if ($geom =~ /([+-]\d+)([+-]\d+)/) {
-	    ($X,$Y) = ($1,$2);
-	} else {
-	    warn $geom . "?";
-	    return;
-	}
-        my($newx, $newy) = ($X,$Y);
-	if ($newx>=0) {
-	    $newx+=$e->X-$lastx;
-	    $newx=0 if ($newx<0);
-	    $newx="+$newx";
-	} else {
-	    $newx-=$e->X-$lastx;
-	    $newx="-0" if ($newx>0);
-	}
-	if ($newy>=0) {
-	    $newy+=$e->Y-$lasty;
-	    $newy=0 if ($newy<0);
-	    $newy="+$newy";
-	} else {
-	    $newy-=$e->Y-$lasty;
-	    $newy="-0" if ($newy>0);
-	}
-warn "(".$top->X.",".$top->Y.")=>($newx,$newy)";
-	#$top->MoveResizeWindow($newx,$newy,400,200);
-	$top->geometry("$newx$newy");
-	#$top->MoveResizeWindow($newx,$newy);
-#$top->idletasks;
+
+#$x->ConfigureWindow($wrapper, "x" => 40, "y" => 40);
+#($root,$parent) = $x->QueryTree($wrapper) if !defined $parent;
+#($root,$parent) = $x->QueryTree(hex($top->id)) if !defined $parent;
+#$parent=hex($top->id) if !defined $parent;
+
+my(%geom) = $x->GetGeometry($wrapper);
+my $X = $geom{x}+$e->X-$lastx;
+my $Y = $geom{y}+$e->Y-$lasty;
+$x->ConfigureWindow($wrapper, "x" => $X, "y" => $Y);
+
+#warn $x->GetGeometry($parent);
+#warn $x->GetGeometry(hex($top->id));
+
+#  	my $geom = $top->geometry;
+#  	if ($geom =~ /([+-]\d+)([+-]\d+)/) {
+#  	    ($X,$Y) = ($1,$2);
+#  	} else {
+#  	    warn $geom . "?";
+#  	    return;
+#  	}
+#          my($newx, $newy) = ($X,$Y);
+#  	if ($newx>=0) {
+#  	    $newx+=$e->X-$lastx;
+#  	    $newx=0 if ($newx<0);
+#  	    $newx="+$newx";
+#  	} else {
+#  	    $newx-=$e->X-$lastx;
+#  	    $newx="-0" if ($newx>0);
+#  	}
+#  	if ($newy>=0) {
+#  	    $newy+=$e->Y-$lasty;
+#  	    $newy=0 if ($newy<0);
+#  	    $newy="+$newy";
+#  	} else {
+#  	    $newy-=$e->Y-$lasty;
+#  	    $newy="-0" if ($newy>0);
+#  	}
+#  warn "(".$top->X.",".$top->Y.")=>($newx,$newy)";
+#  	#$top->MoveResizeWindow($newx,$newy,400,200);
+#  	$top->geometry("$newx$newy");
+#  	#$top->MoveResizeWindow($newx,$newy);
+#  #$top->idletasks;
     }
     $lastx = $e->X;
     $lasty = $e->Y;
@@ -106,19 +132,15 @@ $id = hex($top->id);
 $lid = hex($label->id);
 warn "***id=$id";
 $top->update;
-$x = new X11::Protocol;
-$x->init_extension('SHAPE') or die;
 
-$width=0;
-$height=0;
-$bitmap=0;
-$xhot=0;
-$yhot=0;
+#warn $top->geometry;
+#warn $top->X . "/" . $top->Y;
 
+
+#$x->ConfigureWindow($wrapper, "x" => 40, "y" => 40);
 
 $pixmap = $x->new_rsrc;
 warn $pixmap;
-my($wrapper) = $top->wrapper;
 #warn "wrapper=".($top->wrapper);
 warn $x->CreatePixmap($pixmap, $wrapper, 1, 120, 120);
 #$x->ClearArea($pixmap,0,0,120,120,0);
