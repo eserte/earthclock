@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.54 2003/04/25 21:51:29 eserte Exp $
+# $Id: earthclock,v 1.55 2003/04/27 07:48:19 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002,2003 Slaven Rezic. All rights reserved.
@@ -130,7 +130,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.54 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -508,10 +508,9 @@ sub draw_time {
 	(!defined $last_earth_update ||
 	 $last_earth_update+$wait<time ||
 	 $args{-forcedraw})) {
-	$img->delete if $img;
-
 	$c->Busy;
 	eval {
+	    $img->delete if $img;
 	    my $thisearthcmd = $dflt_earthcmd;
 	    if (ref $thisearthcmd ne "CODE") {
 		$thisearthcmd = subst_exe_string($thisearthcmd);
