@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Phoon.pm,v 1.4 2000/08/29 23:59:01 eserte Exp $
+# $Id: Phoon.pm,v 1.5 2000/08/30 00:36:50 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -17,6 +17,7 @@ package Phoon;
 use Time::localtime;
 use Math::Trig qw(tan pi deg2rad rad2deg atan);
 use POSIX qw(floor);
+use FindBin;
 
 use strict;
 use vars qw($VERSION);
@@ -442,10 +443,27 @@ sub tk_photo {
     #my $angrad = phase($pdate);
     $args{-width}  = 100 unless defined $args{-width};
     $args{-height} = 100 unless defined $args{-height};
-    $args{-imagefile} = "/usr/ports/astro/xphoon/work/xphoon/moon.xbm"
-	unless defined $args{-imagefile};
-    open(PBM, "xbmtopbm $args{-imagefile} | " .
-	      "pnmscale -xsize $args{-width} -ysize $args{-height} | ppmtoxpm |");
+
+    my $imagefile;
+    if ($args{-imagefile}) {
+	$imagefile = $args{-imagefile};
+    } else {
+	$imagefile = "$FindBin::RealBin/moon.xbm.gz";
+	if (!-r $imagefile) {
+	    die "No imagefile found or given";
+	}
+    }
+
+    my $cmd;
+    if ($imagefile =~ /\.gz$/) {
+	$cmd = "zcat $imagefile | xbmtopbm ";
+    } else {
+	$cmd = "xbmtopbm $imagefile ";
+    }
+    $cmd .= "| pnmscale -xsize $args{-width} -ysize $args{-height} " .
+	    "| ppmtoxpm |";
+
+    open(PBM, $cmd);
     local($/) = undef;
     my $buf = <PBM>;
     close PBM;
@@ -455,7 +473,7 @@ sub tk_photo {
 }
 
 sub tk_shadow {
-    my($c, $angle, $w) = @_;
+    my($c, $angle, $w, %args) = @_;
 
     $c->delete("shadow");
 
@@ -471,6 +489,7 @@ sub tk_shadow {
 		       -fill => "black",
 		       -outline => "black",
 		       -tags => "shadow",
+		       %args,
 		      );
     } elsif ($angle < pi) {
 	my $begin = ($w/2 * $angle/(pi/2));
@@ -482,10 +501,11 @@ sub tk_shadow {
 			  -style => "arc",
 			  -start => 90, -extent => 180,
 			  -tags => "shadow",
+			  %args,
 			 );
 	}
     } elsif ($angle < 3*pi/2) {
-	my $begin = $w - ($w/2)*($angle-pi) * 2/pi;
+	my $begin = $w - ($w/2)*($angle - pi) * 2/pi;
 	for(my $b1 = $begin; $b1<=$w; $b1++) {
 	    my $x = $w-$b1;
 	    my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($b1))/(2*($a1-$b1));
@@ -495,6 +515,7 @@ sub tk_shadow {
 			  -style => "arc",
 			  -start => -90, -extent => 180,
 			  -tags => "shadow",
+			  %args,
 			 );
 	}
     } else {
@@ -505,6 +526,7 @@ sub tk_shadow {
 		       -fill => "black",
 		       -outline => "black",
 		       -tags => "shadow",
+		       %args,
 		      );
     }
 }
