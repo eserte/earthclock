@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.17 2000/04/21 19:39:12 eserte Exp $
+# $Id: earthclock,v 1.18 2000/04/26 07:03:02 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -26,6 +26,7 @@ my $width = 200;
 my $height = 200;
 my $geometry;
 my $stay_on_top;
+my $autoraise;
 my $tmpfile = "/tmp/earth-$$.gif";
 my $date;
 my $dflt_earthcmd;
@@ -49,6 +50,7 @@ GetOptions("pos=s" => \$pos,
 	   "geometry=s" => \$geometry,
 	   "stayontop!" => \$stay_on_top,
 	   "earthcmd=s" => \$dflt_earthcmd,
+	   "autoraise!" => \$autoraise,
 	  );
 
 if (!$dflt_earthcmd) {
@@ -104,6 +106,9 @@ foreach (sort keys %earthcmd) {
 $popup_menu->checkbutton(-label => "Stay on top",
 			 -variable => \$stay_on_top,
 			);
+$popup_menu->checkbutton(-label => "Autoraise",
+			 -variable => \$autoraise,
+			);
 $popup_menu->command(-label => "Exit",
 		     -command => sub { $top->destroy },
 		    );
@@ -111,6 +116,9 @@ $popup_menu->command(-label => "Exit",
 $top->bind("<ButtonPress-3>" => sub {
 	       my $e = $_[0]->XEvent;
 	       $popup_menu->Post($e->X, $e->Y);
+	   });
+$top->bind("<Enter>" => sub {
+	       if ($autoraise) { $top->raise }
 	   });
 
 my($wrapper) = $top->wrapper;
