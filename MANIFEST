@@ -6,3 +6,6 @@ Astro/moon.xbm.gz
 Astro/moon.xpm.gz
 Date/Calendar.pm
 MANIFEST
+#install.pl
+#install.pl.config
+#Win32Util.pm
