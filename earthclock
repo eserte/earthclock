@@ -2,14 +2,14 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.47 2002/04/16 22:26:26 eserte Exp $
+# $Id: earthclock,v 1.48 2003/03/28 10:40:19 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-# Mail: slaven.rezic@berlin.de
+# Mail: slaven@rezic.de
 # WWW:  http://user.cs.tu-berlin.de/~eserte/
 #
 
@@ -51,7 +51,7 @@ use strict;
 
 BEGIN {
     my @vars = qw($width $height $pos $wait $stay_on_top $autoraise
-		  $dflt_earthcmd);
+		  $dflt_earthcmd $xearth_cgi_url);
     eval           q{ use savevars @vars };
     if ($@) { eval q{ use vars     @vars } }
 }
@@ -64,7 +64,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.47 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.48 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -77,6 +77,8 @@ $pos = "fixed,53,13" unless defined $pos;
 $wait = 30*60 unless defined $wait && $wait >= 60;
 $width = 200  unless defined $width && $width >= 30;
 $height = 200 unless defined $height && $height >= 30;
+$xearth_cgi_url = "http://www/~eserte/cgi/xearth.cgi?pos=%p&width=%w&height=%h"
+    unless defined $xearth_cgi_url;
 my $geometry;
 my $tmpfile = tmpdir() . "/earth-$$.gif";
 my $date;
@@ -86,8 +88,6 @@ my $v;
 my $meteosat7_url  = "http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG";
 my $gms5_url       = "http://rsd.gsfc.nasa.gov/goesg/earth/Weather/GMS-5/jpg/vis/4km/0latest.jpg";
 my $test_url       = "http://www/~eserte/test/test.jpg";
-# XXX change the URL for the xearth.cgi here:
-my $xearth_cgi_url = "http://vran/~eserte/cgi/xearth.cgi?pos=%p&width=%w&height=%h";
 
 $SIG{INT} = \&cleanup;
 
@@ -124,6 +124,7 @@ GetOptions("pos=s" => \$pos,
 	   "stayontop!" => \$stay_on_top,
 	   "earthcmd=s" => \$dflt_earthcmd,
 	   "autoraise!" => \$autoraise,
+	   "xearthcgiurl=s" => \$xearth_cgi_url,
 	   "test!" => \$test,
 	   "v!" => \$v,
 	  );
@@ -778,7 +779,13 @@ sub get_test_image {
 
 sub get_xearth_cgi_image {
     my(%args) = @_;
-    get_sat_image(subst_exe_string($xearth_cgi_url), %args, -resize => 0);
+    if (!defined $xearth_cgi_url) {
+	$top->messageBox(-title => "Error",
+			 -message => "\$xearth_cgi_url not defined",
+			 -type => "Ok");
+    } else {
+	get_sat_image(subst_exe_string($xearth_cgi_url), %args, -resize => 0);
+    }
 }
 
 sub get_sat_image {
@@ -1056,6 +1063,6 @@ __END__
 
 =head1 AUTHOR
 
-Slaven Rezic <slaven.rezic@berlin.de>
+Slaven Rezic <slaven@rezic.de>
 
 =cut
