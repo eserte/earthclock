@@ -1,0 +1,141 @@
+#!/usr/bin/perl -w
+# -*- perl -*-
+
+#
+# $Id: earthclock,v 1.1 2000/02/26 23:31:49 eserte Exp $
+# Author: Slaven Rezic
+#
+# Copyright (C) 2000 Slaven Rezic. All rights reserved.
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
+#
+# Mail: eserte@cs.tu-berlin.de
+# WWW:  http://user.cs.tu-berlin.de/~eserte/
+#
+
+use Tk;
+use X11::Protocol;
+use C::DynaLib;
+
+#use X11::Protocol::Ext::SHAPE;
+
+$libx11 = new C::DynaLib "/usr/X11R6/lib/libX11.so";
+
+$libptk = new C::DynaLib "/usr/local/lib/perl5/site_perl/5.005/i386-freebsd/auto/Tk/Tk.so";
+
+warn $libx11;
+warn $libptk;
+$XReadBitmapFile = $libx11->DeclareSub({name => "XReadBitmapFile",
+					return => "i",
+					args => [PTR_TYPE,"i","p",
+						 #(PTR_TYPE)x5
+						 ("p")x5
+						]});
+#  						 PTR_TYPE,
+#  						 PTR_TYPE,
+#  						 PTR_TYPE,PTR_TYPE,PTR_TYPE]});
+$XCreateWindow = $libx11->DeclareSub({name => "XCreateWindow",
+				      return => "i",
+				      args => [PTR_TYPE,"i","i","i","i","i",
+					       "i","i",
+					       "i","i","i","i"]});
+$XOpenDisplay = $libx11->DeclareSub({name => "XOpenDisplay",
+				     return => PTR_TYPE,
+				     args => ["p"]});
+$XCloseDisplay = $libx11->DeclareSub({name => "XCloseDisplay",
+				     return => "",
+				     args => [PTR_TYPE]});
+$XWarpPointer = $libx11->DeclareSub({name => "XWarpPointer",
+				     return => "",
+				     args => [PTR_TYPE,"i","i","i","i",
+					      "I","I","i","i"]});
+
+$top = new MainWindow;
+$top->geometry("400x200");
+
+$top->bind("<Motion>" => \&motion);
+
+sub motion{
+    warn "@_;"
+}
+
+for(1..5) {
+$label=$top->Label(-text => "bla blubber foo")->pack(-anchor => "w");
+#$label->bind("<Motion>" => \&motion);
+}
+
+$id = hex($top->id);
+$lid = hex($label->id);
+warn "***id=$id";
+$top->update;
+$x = new X11::Protocol;
+$x->init_extension('SHAPE') or die;
+
+$width=0;
+$height=0;
+$bitmap=0;
+$xhot=0;
+$yhot=0;
+
+
+$pixmap = $x->new_rsrc;
+warn $pixmap;
+my($wrapper) = $top->wrapper;
+#warn "wrapper=".($top->wrapper);
+warn $x->CreatePixmap($pixmap, $wrapper, 1, 120, 120);
+#$x->ClearArea($pixmap,0,0,120,120,0);
+my $gc = $x->new_rsrc;
+warn $x->CreateGC($gc, $pixmap, 'foreground' => $x->white_pixel);
+warn $gc;
+
+my $delgc = $x->new_rsrc;
+warn $x->CreateGC($delgc, $pixmap, 'foreground' => $x->black_pixel);
+warn $del_gc;
+$x->PolyFillRectangle($pixmap, $delgc,
+			[(0, 0), 120, 120]);
+
+$x->PolyFillArc($pixmap, $gc, [20, 20, 80, 80, 0, 23040]);
+
+my $idgc = $x->new_rsrc;
+warn $x->CreateGC($idgc, $id, 'foreground' => $x->black_pixel);
+$x->PolyFillArc($id, $idgc, [20, 20, 80, 80, 0, 23040]);
+
+#  for $i (1..50) {
+#      my $s = " " x $i;
+#      eval '
+#  	$y = $x->PutImage($pixmap, $gc, 1, 8, 8, 0, 0, 0, \'Bitmap\', $s);
+#      ';
+#      warn "$i: $y $@" if $@ eq "";
+#  }
+
+#  warn $x->PutImage($pixmap, $gc, 1, 8, 8, 0, 0, 0, 'Bitmap', " "x11);
+
+#$display =  $XOpenDisplay->(":0");
+#warn $display;
+#$XWarpPointer->($display, 0, $id, 100,100,10,20,30,40);
+
+#  my $newid= $XCreateWindow->($display, $id,
+#  		      10, 20, 100, 200, 2, 0,
+#  		      1,0,0,0);
+
+#  warn $XReadBitmapFile->($display, $newid, "/tmp/xeyes/golgomask.bit",
+#  			$width, $height, $bitmap, $xhot, $yhot);
+#  warn "$width, $height, $bitmap, $xhot, $yhot";
+#  warn $XCloseDisplay->($display);
+#  #exit;
+
+#q$x->CreatePixmap($id, 180, 60, 1);
+
+warn $x->ShapeQueryVersion;
+
+$x->ShapeMask($wrapper, 'Bounding', 'Set', 0, 0, $pixmap);
+
+ foreach ($wrapper) { #, $id, $lid) {
+#     warn $x->ShapeRectangles($_, 'Bounding', 'Set', 0, 0, 'UnSorted', [20,20,20,30]);
+ }
+
+
+
+MainLoop;
+
+__END__
