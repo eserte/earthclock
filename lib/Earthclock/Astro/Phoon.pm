@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Phoon.pm,v 1.1 2000/04/26 23:41:03 eserte Exp $
+# $Id: Phoon.pm,v 1.2 2000/04/27 00:06:02 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -19,6 +19,8 @@ use Math::Trig qw(tan pi deg2rad rad2deg atan);
 use POSIX qw(floor);
 
 use strict;
+use vars qw($VERSION);
+$VERSION = "0.01";
 
 # phase.c - routines to calculate the phase of the moon
 #
@@ -435,13 +437,49 @@ sub phase {
    );
 }
 
+sub tk_photo {
+    my($top, $pdate, %args) = @_;
+    my $angrad = phase($pdate);
+    $args{-width}  = 100 unless defined $args{-width};
+    $args{-height} = 100 unless defined $args{-height};
+    $args{-imagefile} = "/usr/ports/astro/xphoon/work/xphoon/moon.xbm"
+	unless defined $args{-imagefile};
+    open(PBM, "xbmtopbm $args{-imagefile} | " .
+	      "pnmscale -xsize $args{-width} -ysize $args{-height} | ppmtoxpm |");
+    local($/) = undef;
+    my $buf = <PBM>;
+    close PBM;
+    my $p = $top->Photo(-data => $buf, -format => "xpm");
+warn $p->width;
+    $p;
+}
+
 return 1 if caller();
 
 for (my $t = time; $t <= time+86400*30; $t+=86400) {
     my $l = localtime($t);
     my %res = phase(jtime($l));
-    print ctime($t) . "=>" . $res{MoonAge}, "\n";
+    print ctime($t) . "=>" . $res{AngRad}, "\n";
 }
 
+use Tk;
+my $top=tkinit;
+my $cal = `cal`;
+my $fixf = $top->fontCreate("fixed");
+my $maxlen = 0;
+my $lines = 0;
+foreach(split(/\n/,$cal)) {
+    $maxlen = length($_) if $maxlen < length($_);
+    $lines++;
+}
+
+my $w = $top->fontMeasure($fixf, "x")*$maxlen;
+my $h = $top->fontMetrics($fixf, -linespace)*$lines;
+warn "$w x $h";
+
+my $p = tk_photo($top,jtime(localtime), -width => $w, -height => $h);
+my $f = $top->Canvas(-height => $h, -width => $w, -tile => $p, -bg => "red")->pack(-expand => 1, -fill => "both");
+$f->createText(0, 0, -text => $cal, -anchor => "nw", -font => "fixed",-fill => "yellow");
+MainLoop;
 
 __END__
