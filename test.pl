@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: test.pl,v 1.2 2002/02/22 19:35:25 eserte Exp $
+# $Id: test.pl,v 1.3 2004/04/27 21:07:16 eserte Exp $
 # Author: Slaven Rezic
 #
 
@@ -22,7 +22,9 @@ BEGIN {
 
 BEGIN { plan tests => 1 }
 
-system("$^X -Mblib blib/script/earthclock &");
+if (!defined $ENV{BATCH}) { $ENV{BATCH} = 1 }
+
+system("$^X -Mblib blib/script/earthclock" . ($ENV{BATCH} ? " &" : ""));
 ok(1);
 
 __END__
