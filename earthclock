@@ -2,10 +2,10 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.30 2001/02/03 22:05:20 eserte Exp $
+# $Id: earthclock,v 1.31 2001/02/06 02:45:48 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 2000 Slaven Rezic. All rights reserved.
+# Copyright (C) 2000,2001 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -27,6 +27,13 @@ fetched from the WWW and displayed.
 Additionally, it is possible to show a calendar of months with the
 phases of the moon.
 
+=head1 CONFIGURATION
+
+All configuration is done through the right-button pop-up menu. If
+the C<savevars> module is installed from CPAN, then settings are
+preserved after exiting the program. The configuration is written to
+C<~/.earthclockrc>.
+
 =cut
 
 use Tk;
@@ -37,20 +44,25 @@ use FindBin;
 use lib "$FindBin::RealBin";
 
 use strict;
+
+BEGIN {
+    my @vars = qw($width $height $pos $wait $stay_on_top $autoraise
+		  $dflt_earthcmd);
+    eval           q{ use savevars @vars };
+    if ($@) { eval q{ use vars     @vars } }
+}
+
 use vars qw($VERSION);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/);
 
-my $pos = "fixed,53,13";
-my $wait = 30*60;
-my $width = 200;
-my $height = 200;
+$pos = "fixed,53,13" unless defined $pos;
+$wait = 30*60 unless defined $wait && $wait >= 60;
+$width = 200  unless defined $width && $width >= 30;
+$height = 200 unless defined $height && $height >= 30;
 my $geometry;
-my $stay_on_top;
-my $autoraise;
 my $tmpfile = tmpdir() . "/earth-$$.gif";
 my $date;
-my $dflt_earthcmd;
 my $test = 0;
 
 my $meteosat7_url = "http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG";
@@ -674,7 +686,19 @@ sub get_sat_image {
 
     require LWP::UserAgent;
     require GD;
-    require Tk::JPEG;
+
+    my $outfmt = "xpm";
+    if (!eval {
+	require Tk::JPEG;
+	$outfmt = "jpeg";
+	1;
+    }) {
+	eval {
+	    require Tk::PNG;
+	    $outfmt = "png";
+	    1;
+	};
+    }
 
     my $ua = new LWP::UserAgent;
     my $req = new HTTP::Request('GET', $url);
@@ -684,26 +708,10 @@ sub get_sat_image {
 	resize_image(-in     => $tmpjpeg,
 		     -infmt  => 'jpeg',
 		     -out    => $args{-tmpfile},
-		     -outfmt => 'jpeg',
+		     -outfmt => $outfmt,
 		     -width  => $args{-width},
 		     -height => $args{-height},
 		    );
-#  	$res->is_success or die "Could not load $url";
-#  	open(JPEG, $tmpjpeg) or die "Could not open $tmpjpeg: $!";
-#  	binmode JPEG;
-#  	my $from_img = GD::Image->newFromJpeg(\*JPEG);
-#  	close JPEG;
-#  	$from_img or die "Could not recognize JPEG data in $tmpjpeg";
-#  	my $new_img = GD::Image->new($args{-width}, $args{-height});
-#  	$new_img or die "Could not create empty GD image";
-#    	$new_img->copyResized($from_img, 0, 0, 0, 0,
-#    			      $args{-width}, $args{-height},
-#    			      $from_img->getBounds);
-#  	open(OUT, ">$args{-tmpfile}")
-#  	    or die "Can't write to $args{-tmpfile}: $!";
-#  	binmode OUT;
-#  	print OUT $new_img->jpeg(75);
-#  	close OUT;
     };
     warn $@ if $@;
 
