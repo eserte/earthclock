@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.37 2001/06/10 20:11:48 eserte Exp $
+# $Id: earthclock,v 1.38 2001/10/01 15:22:20 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001 Slaven Rezic. All rights reserved.
@@ -54,7 +54,7 @@ BEGIN {
 
 use vars qw($VERSION $sizes);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -742,7 +742,7 @@ sub set_alarm {
     if ($now[1] >= $min) {
 	$add_hour = 1;
     }
-    $now[1] = $min;
+    $now[1] = int $min;
     my $time = Time::Local::timelocal(@now);
     if ($add_hour) {
 	$time += 60*60;
