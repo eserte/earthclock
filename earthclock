@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.6 2000/02/27 11:34:10 eserte Exp $
+# $Id: earthclock,v 1.7 2000/02/27 11:47:40 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -15,12 +15,35 @@
 
 use Tk;
 use X11::Protocol;
+use Getopt::Long;
+use Math::Trig;
 
-$top = new MainWindow;
+use strict;
+
+my $pos = "fixed,53,13";
+my $wait = 30*60;
+my $width = 200;
+my $height = 200;
+my $geometry;
+
+GetOptions("pos=s" => \$pos,
+	   "wait=i" => \$wait,
+	   "geometry=s" => \$geometry);
+
+my($x,$y) = (0,0);
+if (defined $geometry) {
+    ($x,$y,$width,$height) = parse_geometry_string($geometry);
+}
+
+my $top = new MainWindow;
+my $id = hex($top->id);
 $top->overrideredirect(1);
-$top->geometry("200x200");
+$top->geometry($width."x".$height);
 
 my($lastx,$lasty);
+my $last_earth_update;
+my $img;
+my $c_img;
 
 $top->bind("<Motion>" => \&motion);
 $top->bind("<ButtonPress-1>" => sub { $top->raise; });
@@ -28,56 +51,41 @@ $top->bind("<ButtonRelease-1>" => sub { undef $lastx });
 
 my($wrapper) = $top->wrapper;
 
-$x = new X11::Protocol;
-$x->init_extension('SHAPE') or die;
+my $x11 = new X11::Protocol;
+$x11->init_extension('SHAPE') or die;
 
-sub motion{
-    my $w = shift;
-    my $e = $w->XEvent;
-    return unless $e->s eq 'B1-';
-    if (defined $lastx) {
-	my(%geom) = $x->GetGeometry($wrapper);
-	my $X = $geom{x}+$e->X-$lastx;
-	my $Y = $geom{y}+$e->Y-$lasty;
-	$x->ConfigureWindow($wrapper, "x" => $X, "y" => $Y);
-    }
-    $lastx = $e->X;
-    $lasty = $e->Y;
-}
+my $c = $top->Canvas(-border => 0,
+		     -height => $height,
+		     -width => $width,
+		     -highlightthickness => 0)->pack;
 
-$c = $top->Canvas(-border => 0,
-		  -height => 200,
-		  -width => 200,
-		  -highlightthickness => 0)->pack;
+#$top->update;
 
-$id = hex($top->id);
-$top->update;
+my $pixmap = $x11->new_rsrc;
+$x11->CreatePixmap($pixmap, $wrapper, 1, $width, $height);
+my $gc = $x11->new_rsrc;
+$x11->CreateGC($gc, $pixmap, 'foreground' => $x11->white_pixel);
+my $delgc = $x11->new_rsrc;
+$x11->CreateGC($delgc, $pixmap, 'foreground' => $x11->black_pixel);
+$x11->PolyFillRectangle($pixmap, $delgc,
+			[(0, 0), $width, $height]);
+$x11->PolyFillArc($pixmap, $gc, [0, 0, $width-1, $height-1, 0, 23040]);
 
-$pixmap = $x->new_rsrc;
-$x->CreatePixmap($pixmap, $wrapper, 1, 200, 200);
-my $gc = $x->new_rsrc;
-$x->CreateGC($gc, $pixmap, 'foreground' => $x->white_pixel);
-$gc;
-my $delgc = $x->new_rsrc;
-$x->CreateGC($delgc, $pixmap, 'foreground' => $x->black_pixel);
-$del_gc;
-$x->PolyFillRectangle($pixmap, $delgc,
-			[(0, 0), 200, 200]);
+$x11->ShapeMask($wrapper, 'Bounding', 'Set', 0, 0, $pixmap);
 
-$x->PolyFillArc($pixmap, $gc, [0, 0, 199, 199, 0, 23040]);
-
-$x->ShapeMask($wrapper, 'Bounding', 'Set', 0, 0, $pixmap);
-
-my $c_h = $c->createLine(100,100,100,50,-width=>5,-fill=>"white");
-my $c_m = $c->createLine(100,100,100,0,-width=>5,-fill=>"white");
-my $c_s = $c->createLine(100,100,100,0,-width=>3,-fill=>"white");
+my $c_h = $c->createLine($width/2,$height/2,$width/2,$height/4,
+			 -width=>5,-fill=>"white");
+my $c_m = $c->createLine($width/2,$height/2,$width/2,0,
+			 -width=>5,-fill=>"white");
+my $c_s = $c->createLine($width/2,$height/2,$width/2,0,
+			 -width=>3,-fill=>"white");
 
 for my $h (0..11) {
     $c->createLine(
-		   100-sin(deg2rad((12-$h)*30))*100,
-		   100-cos(deg2rad((12-$h)*30))*100,
-		   100-sin(deg2rad((12-$h)*30))*92,
-		   100-cos(deg2rad((12-$h)*30))*92,
+		   $width/2-sin(deg2rad((12-$h)*30))*$width/2,
+		   $height/2-cos(deg2rad((12-$h)*30))*$height/2,
+		   $width/2-sin(deg2rad((12-$h)*30))*($width/2-8),
+		   $height/2-cos(deg2rad((12-$h)*30))*($height/2-8),
 		   -fill => "white",
 		  );
 }
@@ -85,7 +93,19 @@ for my $h (0..11) {
 $top->repeat(1000, \&draw_time);
 MainLoop;
 
-use Math::Trig;
+sub motion{
+    my $w = shift;
+    my $e = $w->XEvent;
+    return unless $e->s eq 'B1-';
+    if (defined $lastx) {
+	my(%geom) = $x11->GetGeometry($wrapper);
+	my $X = $geom{x}+$e->X-$lastx;
+	my $Y = $geom{y}+$e->Y-$lasty;
+	$x11->ConfigureWindow($wrapper, "x" => $X, "y" => $Y);
+    }
+    $lastx = $e->X;
+    $lasty = $e->Y;
+}
 
 sub draw_time {
     my(@t) = localtime;
@@ -95,30 +115,43 @@ sub draw_time {
     $m+=$s/60;
 
     if (!defined $last_earth_update ||
-	$last_earth_update+60*30<time) {
-#	$last_earth_update+60*1<time) {
-	system("xearth -pos fixed,53,13 -size 200,200 -gif > /tmp/e.gif");
+	$last_earth_update+$wait<time) {
+	system("xearth -pos $pos -size $width,$height -gif > /tmp/e.gif");
 	if ($img) {
 	    $img->delete;
 	}
 	$img = $top->Photo(-file => "/tmp/e.gif");
 	if (!defined $c_img) {
-	    $c_img = $c->createImage(100,100, -tags => "img");
+	    $c_img = $c->createImage($width/2, $height/2, -tags => "img");
 	    $c->lower("img");
 	}
 	$c->itemconfigure($c_img, -image => $img);
 	$last_earth_update=time;
     }
 
-    $c->coords($c_h, 100, 100,
-	       100-sin(deg2rad((12-$h)*30))*60,
-	       100-cos(deg2rad((12-$h)*30))*60);
-    $c->coords($c_m, 100, 100,
-	       100-sin(deg2rad((60-$m)*6))*90,
-	       100-cos(deg2rad((60-$m)*6))*90);
-    $c->coords($c_s, 100, 100,
-	       100-sin(deg2rad((60-$s)*6))*90,
-	       100-cos(deg2rad((60-$s)*6))*90);
+    $c->coords($c_h, $width/2, $height/2,
+	       $width/2-sin(deg2rad((12-$h)*30))*($width/2*.6),
+	       $height/2-cos(deg2rad((12-$h)*30))*($height/2*.6));
+    $c->coords($c_m, $width/2, $height/2,
+	       $width/2-sin(deg2rad((60-$m)*6))*($width/2*.9),
+	       $height/2-cos(deg2rad((60-$m)*6))*($height/2*.9));
+    $c->coords($c_s, $width/2, $height/2,
+	       $width/2-sin(deg2rad((60-$s)*6))*($width/2*.9),
+	       $height/2-cos(deg2rad((60-$s)*6))*($height/2*.9));
+}
+
+sub parse_geometry_string {
+    my $geometry = shift;
+    my @extends = (0, 0, 0, 0);
+    if ($geometry =~ /([-+]?\d+)x([-+]?\d+)/) {
+	$extends[2] = $1;
+	$extends[3] = $2;
+    }
+    if ($geometry =~ /[-+](\d+)[-+](\d+)/) {
+	$extends[0] = $1;
+	$extends[1] = $2;
+    }
+    @extends;
 }
 
 __END__
