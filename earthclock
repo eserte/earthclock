@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.5 2000/02/27 02:47:42 eserte Exp $
+# $Id: earthclock,v 1.6 2000/02/27 11:34:10 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -23,7 +23,8 @@ $top->geometry("200x200");
 my($lastx,$lasty);
 
 $top->bind("<Motion>" => \&motion);
-$top->bind("<ButtonRelease-1>" => sub { warn "rel"; undef $lastx });
+$top->bind("<ButtonPress-1>" => sub { $top->raise; });
+$top->bind("<ButtonRelease-1>" => sub { undef $lastx });
 
 my($wrapper) = $top->wrapper;
 
@@ -67,9 +68,9 @@ $x->PolyFillArc($pixmap, $gc, [0, 0, 199, 199, 0, 23040]);
 
 $x->ShapeMask($wrapper, 'Bounding', 'Set', 0, 0, $pixmap);
 
-my $c_h = $c->createLine(100,100,100,50,-width=>5);
-my $c_m = $c->createLine(100,100,100,0,-width=>5);
-my $c_s = $c->createLine(100,100,100,0,-width=>3);
+my $c_h = $c->createLine(100,100,100,50,-width=>5,-fill=>"white");
+my $c_m = $c->createLine(100,100,100,0,-width=>5,-fill=>"white");
+my $c_s = $c->createLine(100,100,100,0,-width=>3,-fill=>"white");
 
 for my $h (0..11) {
     $c->createLine(
@@ -77,10 +78,9 @@ for my $h (0..11) {
 		   100-cos(deg2rad((12-$h)*30))*100,
 		   100-sin(deg2rad((12-$h)*30))*92,
 		   100-cos(deg2rad((12-$h)*30))*92,
+		   -fill => "white",
 		  );
-
 }
-
 
 $top->repeat(1000, \&draw_time);
 MainLoop;
@@ -93,6 +93,22 @@ sub draw_time {
     $h=$h%12;
     $h+=$m/60;
     $m+=$s/60;
+
+    if (!defined $last_earth_update ||
+	$last_earth_update+60*30<time) {
+#	$last_earth_update+60*1<time) {
+	system("xearth -pos fixed,53,13 -size 200,200 -gif > /tmp/e.gif");
+	if ($img) {
+	    $img->delete;
+	}
+	$img = $top->Photo(-file => "/tmp/e.gif");
+	if (!defined $c_img) {
+	    $c_img = $c->createImage(100,100, -tags => "img");
+	    $c->lower("img");
+	}
+	$c->itemconfigure($c_img, -image => $img);
+	$last_earth_update=time;
+    }
 
     $c->coords($c_h, 100, 100,
 	       100-sin(deg2rad((12-$h)*30))*60,
