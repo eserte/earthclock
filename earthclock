@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.31 2001/02/06 02:45:48 eserte Exp $
+# $Id: earthclock,v 1.32 2001/02/24 01:08:16 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001 Slaven Rezic. All rights reserved.
@@ -52,9 +52,16 @@ BEGIN {
     if ($@) { eval q{ use vars     @vars } }
 }
 
-use vars qw($VERSION);
+use vars qw($VERSION $sizes);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/);
+
+$sizes = { "tiny"   => [75,75,   2,2,1],
+	   "small"  => [125,125, 4,4,2],
+	   "medium" => [200,200, 5,5,3],
+	   "large"  => [350,350, 7,7,5],
+	   "huge"   => [500,500, 9,9,7],
+	 };
 
 $pos = "fixed,53,13" unless defined $pos;
 $wait = 30*60 unless defined $wait && $wait >= 60;
@@ -230,6 +237,13 @@ x11_shape_setup();
 
 my($c_h, $c_m, $c_s);
 my($c_h_width, $c_m_width, $c_s_width) = (5, 5, 3);
+for (sort { $b->[0] <=> $a->[0] } values %$sizes) {
+    if ($width >= $_->[0]) {
+	($c_h_width, $c_m_width, $c_s_width) = @{$_}[2..4];
+	last;
+    }
+}
+
 ziffernblatt();
 
 $top->repeat(1000, \&draw_time);
@@ -262,12 +276,7 @@ sub ziffernblatt {
 sub set_size {
     my($size) = @_;
     ($width, $height, $c_h_width, $c_m_width, $c_s_width) =
-	@{ { "tiny"   => [75,75,   2,2,1],
-	     "small"  => [125,125, 4,4,2],
-	     "medium" => [200,200, 5,5,3],
-	     "large"  => [350,350, 7,7,5],
-	     "huge"   => [500,500, 9,9,7],
-	   }->{$size} };
+	@{ $sizes->{$size} };
 
     $top->geometry($width."x".$height);
     $c->configure(-height => $height,
