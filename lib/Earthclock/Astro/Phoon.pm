@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Phoon.pm,v 1.2 2000/04/27 00:06:02 eserte Exp $
+# $Id: Phoon.pm,v 1.3 2000/08/29 22:32:46 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -438,8 +438,8 @@ sub phase {
 }
 
 sub tk_photo {
-    my($top, $pdate, %args) = @_;
-    my $angrad = phase($pdate);
+    my($top, %args) = @_;
+    #my $angrad = phase($pdate);
     $args{-width}  = 100 unless defined $args{-width};
     $args{-height} = 100 unless defined $args{-height};
     $args{-imagefile} = "/usr/ports/astro/xphoon/work/xphoon/moon.xbm"
@@ -450,17 +450,66 @@ sub tk_photo {
     my $buf = <PBM>;
     close PBM;
     my $p = $top->Photo(-data => $buf, -format => "xpm");
-warn $p->width;
+#warn $p->width;
     $p;
 }
 
-return 1 if caller();
+sub tk_shadow {
+    my($c, $angle, $w) = @_;
 
-for (my $t = time; $t <= time+86400*30; $t+=86400) {
-    my $l = localtime($t);
-    my %res = phase(jtime($l));
-    print ctime($t) . "=>" . $res{AngRad}, "\n";
+    $c->delete("shadow");
+
+    my($a1, $a2) = ($w/2, 0);
+    my($b2, $m2) = ($w/2, $w/2);
+    my($c1, $c2) = ($w/2, $w);
+    my $m2 = ($c2-$a2)/2+$a2;
+
+    if ($angle < pi()/2) {
+	my $b1 = $w - ($w/2 * $angle/(pi()/2));
+	my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($b1))/(2*($a1-$b1));
+	$c->createOval($b1-($b1-$m1)*2,$m2-($b1-$m1),$b1,$m2+($b1-$m1),
+		       -fill => "black",
+		       -outline => "black",
+		       -tags => "shadow",
+		      );
+    } elsif ($angle < pi()) {
+	my $begin = ($w/2 * $angle/(pi()/2));
+	for(my $x = $begin; $x<=$w; $x++) {
+	    my $b1 = $w-$x;
+	    my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($x))/(2*($a1-$x));
+	    $c->createArc($b1,$m2-($x-$m1),$b1+($x-$m1)*2,$m2+($x-$m1),
+			  -fill=>"black",-outline=>"black",
+			  -style => "arc",
+			  -start => 90, -extent => 180,
+			  -tags => "shadow",
+			 );
+	}
+    } elsif ($angle < 3*pi()/2) {
+	my $begin = ($w/2 * $angle/(pi()/2));
+	for(my $x = $begin; $x<=$w; $x++) {
+	    my $b1 = $w-$x;
+	    my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($x))/(2*($a1-$x));
+	    $c->createArc($b1,$m2-($x-$m1),$b1+($x-$m1)*2,$m2+($x-$m1),
+			  -fill=>"black",-outline=>"black",
+			  -style => "arc",
+			  -start => 90, -extent => 180,
+			  -tags => "shadow",
+			 );
+	}
+    } else {
+	my $x = $w - ($w/2 * ($angle-3*pi()/2)/(pi()/2));
+	my $b1 = $x+$w/2;#w-$x;
+	my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($x))/(2*($a1-$x));
+	$c->createOval($b1,$m2-($x-$m1),$b1+($x-$m1)*2,$m2+($x-$m1),
+		       -fill => "black",
+		       -outline => "black",
+		       -tags => "shadow",
+		      );
+    }
 }
+
+
+return 1 if caller();
 
 use Tk;
 my $top=tkinit;
@@ -475,11 +524,96 @@ foreach(split(/\n/,$cal)) {
 
 my $w = $top->fontMeasure($fixf, "x")*$maxlen;
 my $h = $top->fontMetrics($fixf, -linespace)*$lines;
+($w, $h) = (max($w,$h))x2;
+
 warn "$w x $h";
 
-my $p = tk_photo($top,jtime(localtime), -width => $w, -height => $h);
-my $f = $top->Canvas(-height => $h, -width => $w, -tile => $p, -bg => "red")->pack(-expand => 1, -fill => "both");
-$f->createText(0, 0, -text => $cal, -anchor => "nw", -font => "fixed",-fill => "yellow");
+my $p = tk_photo($top,#jtime(localtime+86400*$i),
+		 -width => $w, -height => $h);
+
+my $c = $top->Canvas(-width => $w, -height => $h)->pack;
+$c->createImage(0, 0, -image => $p, -anchor => "nw");
+$c->createText(0, 0, -text => $cal, -anchor => "nw",
+	       -font => "fixed",-fill => "yellow",
+	      -tags => "cal");
+
+while(1) {
+    for (my $t = time; $t <= time+86400*30; $t+=86400) {
+	my $l = localtime($t);
+	my %res = phase(jtime($l));
+#	print ctime($t) . "=>" . $res{AngRad}, "\n";
+	tk_shadow($c, $res{AngRad}, $w);
+	$c->raise("cal");
+	$c->tk_sleep(0.1);
+    }
+}
+
+#  my $f;
+#  for my $i (0 .. 27) {
+#      if (!$f || $i % 5 == 0) {
+#  	$f=$top->Frame->pack;
+#      }
+#      $f->Label(-image => $p)->pack(-side => "left");
+#  }
+#  #  my $f = $top->Canvas(-height => $h, -width => $w, -offset => ["sw"], -tile => $p,  -bg => "red")->pack(-expand => 1, -fill => "both");
 MainLoop;
+
+# REPO BEGIN
+# REPO NAME max /home/e/eserte/src/repository 
+# REPO MD5 6232837b4a9cf07258e364a03b0a89dc
+=head2 max(...)
+
+Return maximum value.
+
+=cut
+
+sub max {
+    my $max = $_[0];
+    foreach (@_[1..$#_]) {
+	$max = $_ if $_ > $max;
+    }
+    $max;
+}
+# REPO END
+
+# REPO BEGIN
+# REPO NAME pi /home/e/eserte/src/repository 
+# REPO MD5 c36e29c0a7cfc05784032fff5b741475
+sub pi ()   { 4 * atan2(1, 1) } # 3.141592653
+# REPO END
+
+# REPO BEGIN
+# REPO NAME sqr /home/e/eserte/src/repository 
+# REPO MD5 16b84a0c96e6a73e14dccb674f78be75
+=head2 sqr($n)
+
+Return the square of $n.
+
+=cut
+
+sub sqr { $_[0] * $_[0] }
+# REPO END
+
+# REPO BEGIN
+# REPO NAME tk_sleep /home/e/eserte/src/repository 
+# REPO MD5 a27d34cadcb4c0f321eae5ca04614005
+=head2 tk_sleep
+
+    $top->tk_sleep($s);
+
+Sleep $s seconds (fractions are allowed). Use this method in Tk
+programs rather than the blocking sleep function.
+
+=cut
+
+sub Tk::Widget::tk_sleep {
+    my($top, $s) = @_;
+    my $sleep_dummy = 0;
+    $top->after($s*1000,
+                sub { $sleep_dummy++ });
+    $top->waitVariable(\$sleep_dummy)
+	unless $sleep_dummy;
+}
+# REPO END
 
 __END__
