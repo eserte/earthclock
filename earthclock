@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.42 2002/02/22 19:31:16 eserte Exp $
+# $Id: earthclock,v 1.43 2002/02/23 11:15:01 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002 Slaven Rezic. All rights reserved.
@@ -56,7 +56,7 @@ BEGIN {
     if ($@) { eval q{ use vars     @vars } }
 }
 
-use vars qw($VERSION $sizes $eventtop $icalevent);
+use vars qw($VERSION $sizes $eventtop $icalevent $win32_stay_on_top);
 
 eval '
 use lib "/home/e/eserte/lib/perl";
@@ -64,7 +64,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -192,6 +192,7 @@ foreach my $size (qw(tiny small medium large huge)) {
 
 $popup_menu->checkbutton(-label => "Stay on top",
 			 -variable => \$stay_on_top,
+			 -command => \&stay_on_top,
 			);
 $popup_menu->checkbutton(-label => "Autoraise",
 			 -variable => \$autoraise,
@@ -247,7 +248,7 @@ my $stay_above_after;
 # Leider wird bei aktiviertem Shape Visibility nur geschickt, wenn das
 # gesamte Fenster verdeckt wird (XFree 3.3.x)
 $top->bind("<Visibility>" => sub {
-	       if ($stay_on_top) {
+	       if ($stay_on_top && ($^O eq 'MSWin32' && !$win32_stay_on_top)) {
 		   if ($stay_above_after) {
 		       $stay_above_after->cancel;
 		   }
@@ -276,6 +277,8 @@ ziffernblatt();
 $top->repeat(1000, \&draw_time);
 
 Tk::App::Reloader::check_loop() if defined &Tk::App::Reloader::check_loop;
+
+stay_on_top();
 
 MainLoop;
 
@@ -940,6 +943,40 @@ sub find_bbbikealarm_exe {
 	undef $bbbikealarm;
     }
     $bbbikealarm;
+}
+
+sub stay_on_top {
+    if ($^O eq 'MSWin32') {
+	win32_stay_on_top();
+    }
+}
+
+# idea from Jack:
+sub win32_stay_on_top {
+    $win32_stay_on_top = 0;
+    return unless eval { require Win32::API; 1 };
+    $win32_stay_on_top = 1;
+
+    use constant HWND_NOTOPMOST => -2;
+    use constant HWND_TOPMOST => -1;
+    use constant SWP_NOMOVE => 2;
+    use constant SWP_NOSIZE => 1;
+
+    my $WinID = hex($top->frame);
+
+    my $API = new Win32::API('user32','SetWindowPos',
+			     ['N','N','N','N','N','N','N'],'N');
+    my $callAPI = sub {
+	my($flag) = @_;
+	my($return) = $API->Call($WinID,$flag,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE);
+	warn "ERROR in api call" unless $return;
+    };
+
+    if ($stay_on_top) {
+	$callAPI->(HWND_TOPMOST);
+    } else {
+	$callAPI->(HWND_NOTOPMOST);
+    }
 }
 
 sub cleanup {
