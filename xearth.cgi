@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: xearth.cgi,v 1.2 2002/02/24 21:38:28 eserte Exp $
+# $Id: xearth.cgi,v 1.3 2002/08/06 10:20:12 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2002 Slaven Rezic. All rights reserved.
@@ -31,6 +31,7 @@ if ($pid == 0) {
 }
 $/ = undef;
 $| = 1;
+binmode STDOUT;
 print header("image/gif");
 print <P>;
 
