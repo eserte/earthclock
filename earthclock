@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.48 2003/03/28 10:40:19 eserte Exp $
+# $Id: earthclock,v 1.49 2003/03/28 20:14:53 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002 Slaven Rezic. All rights reserved.
@@ -21,8 +21,8 @@ earthclock - a nice clock displaying the earth
 
 This is a clock displaying the shaded image of the earth. This program
 needs the xearth or xglobe program for generation of the current earth
-shade. Alternatively, the current Meteosat or GMS picture can be
-fetched from the WWW and displayed.
+shade. Alternatively, the current eumetsat picture can be fetched from
+the WWW and displayed.
 
 Additionally, it is possible to show a calendar of months with the
 phases of the moon.
@@ -64,7 +64,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 '; warn $@ if $@;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.48 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.49 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -80,28 +80,36 @@ $height = 200 unless defined $height && $height >= 30;
 $xearth_cgi_url = "http://www/~eserte/cgi/xearth.cgi?pos=%p&width=%w&height=%h"
     unless defined $xearth_cgi_url;
 my $geometry;
-my $tmpfile = tmpdir() . "/earth-$$.gif";
+my $tmpfile = tmpdir() . "/earth-$$.image";
 my $date;
 my $test = 0;
 my $v;
 
 my $meteosat7_url  = "http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG";
 my $gms5_url       = "http://rsd.gsfc.nasa.gov/goesg/earth/Weather/GMS-5/jpg/vis/4km/0latest.jpg";
+my $eumetsat_list_url = "http://www.eumetsat.de/cgi-bin/imagery/listImages.pl?m=0,c=1,o=0,s=0,f=1,a=0,n=6,d=1,v=400,p=0";
+my $eumetsat_root_url = "http://www.eumetsat.de";
+my $last_eumetsat_image;# XXX not used, see below
 my $test_url       = "http://www/~eserte/test/test.jpg";
+
+my $ua;
 
 $SIG{INT} = \&cleanup;
 
 my %earthcmd;
-if (is_in_path("GET") && is_in_path("djpeg") && is_in_path("pnmscale")) {
-    # satellite images...
-    $earthcmd{'current Meteosat-7'} = "GET $meteosat7_url | djpeg -pnm | pnmscale -w %w -h %h > %o";
+$earthcmd{'current Eumetsat'} = \&get_eumetsat_image;
 
-    # not tested
-    $earthcmd{'current GMS-5'} = "GET $gms5_url | djpeg -pnm | pnmscale -w %w -h %h > %o";
-} else {
-    $earthcmd{'current Meteosat-7'} = \&get_meteosat7_image;
-    $earthcmd{'current GMS-5'}      = \&get_gms5_image;
-}
+# XXX can be deleted:
+#  if (is_in_path("GET") && is_in_path("djpeg") && is_in_path("pnmscale")) {
+#      # satellite images...
+#      #    $earthcmd{'current Meteosat-7'} = "GET $meteosat7_url | djpeg -pnm | pnmscale -w %w -h %h > %o";
+
+#      # not tested
+#      #    $earthcmd{'current GMS-5'} = "GET $gms5_url | djpeg -pnm | pnmscale -w %w -h %h > %o";
+#  } else {
+#    $earthcmd{'current Meteosat-7'} = \&get_meteosat7_image;
+#    $earthcmd{'current GMS-5'}      = \&get_gms5_image;
+#}
 
 $earthcmd{'xearth.cgi'}         = \&get_xearth_cgi_image;
 
@@ -788,53 +796,94 @@ sub get_xearth_cgi_image {
     }
 }
 
+sub get_eumetsat_image {
+    my(%args) = @_;
+    my $ua = get_ua();
+    return if !$ua;
+    if ($test) {
+	$eumetsat_list_url = "file:///home/e/eserte/trash/listImages.pl?m=0,c=1,o=0,s=0,f=1,a=0,n=6,d=1,v=400,p=0";
+    }
+    my $resp = $ua->get($eumetsat_list_url);
+    if (!$resp->is_success) {
+	warn $resp->error_as_HTML;
+	return;
+    }
+    my $url;
+    my $content = $resp->content;
+    while($content =~ m|(/mdrs/img/jpg/DTOT_M_.*\.jpg)|g) {
+	$url = $1;
+    }
+    return if (!defined $url);
+    $url = "$eumetsat_root_url$url";
+    if ($test) {
+	$url = "file:///home/e/eserte/trash/DTOT_M_20030328_183000.jpg";
+    }
+    # XXX This is not used because get_sat_image probably needs to
+    # use another geometry.... wait for a better solution.
+    #return if (defined $last_eumetsat_image && $url eq $last_eumetsat_image);
+    warn "GET $url\n" if $v;
+    $last_eumetsat_image = $url;
+    get_sat_image($url, %args);
+}
+
+sub get_ua {
+    return $ua if $ua;
+    return unless eval { require LWP::UserAgent };
+    $ua = new LWP::UserAgent;
+    $ua->env_proxy;
+    if ($^O eq 'MSWin32' && eval { require Win32Util; 1 }) {
+        Win32Util::lwp_auto_proxy($ua);
+    }
+    $ua;
+}
+
 sub get_sat_image {
     my($url, %args) = @_;
 
-    return unless eval { require LWP::UserAgent };
+    my $ua = get_ua();
+    return if !$ua;
 
     my $outfmt = "xpm";
-    if (!eval {	require GD::Convert; 1 }) {
+    if (!eval q{ require GD::Convert; GD::Convert->VERSION(2.01); }) {
 	if (!eval {
-	    require Tk::JPEG;
-	    $outfmt = "jpeg";
+	    require Tk::PNG;
+	    $outfmt = "png";
 	    1;
 	}) {
 	    eval {
-		require Tk::PNG;
-		$outfmt = "png";
+		require Tk::JPEG;
+		$outfmt = "jpeg";
 		1;
 	    };
 	}
     }
 
-    my $ua = new LWP::UserAgent;
-    $ua->env_proxy;
-    if ($^O eq 'MSWin32' && eval { require Win32Util; 1 }) {
-        Win32Util::lwp_auto_proxy($ua);
-    }
     my $req = new HTTP::Request('GET', $url);
     my $tmpjpeg = tmpdir() . "/earthclock-$$";
-    my $res = $ua->request($req, $tmpjpeg);
-    (my $infmt = $res->header('Content-Type')) =~ s|^image/||;
+    my $resp = $ua->request($req, $tmpjpeg);
+    if ($resp->is_success) {
+	(my $infmt = $resp->header('Content-Type')) =~ s|^image/||;
 
-    if (exists $args{-resize} && $args{-resize} == 0) {
-	require File::Copy;
-	File::Copy::cp($tmpjpeg, $args{-tmpfile});
+	if (exists $args{-resize} && $args{-resize} == 0) {
+	    require File::Copy;
+	    File::Copy::cp($tmpjpeg, $args{-tmpfile});
+	} else {
+	    eval {
+		resize_image(-in     => $tmpjpeg,
+			     -infmt  => $infmt,
+			     -out    => $args{-tmpfile},
+			     -outfmt => $outfmt,
+			     -width  => $args{-width},
+			     -height => $args{-height},
+			    );
+	    };
+	    warn $@ if $@;
+	}
+
+	unlink $tmpjpeg;
     } else {
-	eval {
-	    resize_image(-in     => $tmpjpeg,
-			 -infmt  => $infmt,
-			 -out    => $args{-tmpfile},
-			 -outfmt => $outfmt,
-			 -width  => $args{-width},
-			 -height => $args{-height},
-			);
-	};
-	warn $@ if $@;
+	warn $resp->error_as_HTML;
     }
-
-    unlink $tmpjpeg;
 }
 
 sub set_alarm {
