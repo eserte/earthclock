@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Phoon.pm,v 1.6 2000/09/03 14:59:39 eserte Exp $
+# $Id: Phoon.pm,v 1.7 2000/09/04 21:51:03 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -445,45 +445,20 @@ sub tk_photo {
     $args{-height} = 100 unless defined $args{-height};
 
     my $imagefile;
-    if ($args{-imagefile}) {
-	$imagefile = $args{-imagefile};
-    } else {
-	$imagefile = "$FindBin::RealBin/moon.xbm.gz";
-	if (!-r $imagefile) {
-	    die "No imagefile found or given";
-	}
-    }
-
     my $p;
 
-    if (is_in_path("zcat") and
-	is_in_path("xbmtopbm") and
-	is_in_path("pnmscale") and
-	is_in_path("ppmtoxpm")) {
+    my $tmpfile_in;
+    my $tmpfile_out;
 
-	my $cmd;
-	if ($imagefile =~ /\.gz$/) {
-	    $cmd = "zcat $imagefile | xbmtopbm ";
-	} else {
-	    $cmd = "xbmtopbm $imagefile ";
-	}
-	$cmd .= "| pnmscale -xsize $args{-width} -ysize $args{-height} " .
-	        "| ppmtoxpm |";
-
-	open(PBM, $cmd);
-	binmode PBM;
-	local($/) = undef;
-	my $buf = <PBM>;
-	close PBM;
-	$p = $top->Photo(-data => $buf, -format => "xpm");
-    } else {
-
-	my $tmpfile_in;
-	my $tmpfile_out;
+    eval {
 
 	# force usage of xpm file because of bug in newFromXbm in gd 1.8.3
 	# and my libgd was not built with xpm, so I have to use png
-	$imagefile = "$FindBin::RealBin/moon.png";
+	if ($args{-imagefile} && $args{-imagefile} =~ /\.png$/) {
+	    $imagefile = $args{-imagefile};
+	} else {
+	    $imagefile = "$FindBin::RealBin/moon.png";
+	}
 
 	if ($imagefile =~ /\.gz$/) {
 	    require Compress::Zlib;
@@ -504,26 +479,60 @@ sub tk_photo {
 
 	$tmpfile_out = tmpdir() . "/xphoon-out-$$";
 
-	eval {
+	require Tk::JPEG;
 
-	    require Tk::JPEG;
+	resize_image(-in     => $imagefile,
+		     -out    => $tmpfile_out,
+		     -outfmt => "jpg",
+		     -width  => $args{-width},
+		     -height => $args{-height},
+		    );
+	$p = $top->Photo(-file => $tmpfile_out);
+    };
+    warn $@ if $@;
 
-	    resize_image(-in     => $imagefile,
-			 -out    => $tmpfile_out,
-			 -outfmt => "jpg",
-			 -width  => $args{-width},
-			 -height => $args{-height},
-			);
-	    $p = $top->Photo(-file => $tmpfile_out);
-	};
-	warn $@ if $@;
+    if ($tmpfile_in) {
+	unlink $tmpfile_in;
+    }
+    if ($tmpfile_out) {
+	unlink $tmpfile_out;
+    }
 
-	if ($tmpfile_in) {
-	    unlink $tmpfile_in;
+    if (!$p) {
+	if (is_in_path("zcat") and
+	    is_in_path("xbmtopbm") and
+	    is_in_path("pnmscale") and
+	    is_in_path("ppmtoxpm")) {
+
+	    if ($args{-imagefile}) {
+		$imagefile = $args{-imagefile};
+	    } else {
+		$imagefile = "$FindBin::RealBin/moon.xbm.gz";
+		if (!-r $imagefile) {
+		    die "No imagefile found or given";
+		}
+	    }
+
+	    my $cmd;
+	    if ($imagefile =~ /\.gz$/) {
+		$cmd = "zcat $imagefile | xbmtopbm ";
+	    } else {
+		$cmd = "xbmtopbm $imagefile ";
+	    }
+	    $cmd .= "| pnmscale -xsize $args{-width} -ysize $args{-height} " .
+	            "| ppmtoxpm |";
+
+	    open(PBM, $cmd);
+	    binmode PBM;
+	    local($/) = undef;
+	    my $buf = <PBM>;
+	    close PBM;
+	    $p = $top->Photo(-data => $buf, -format => "xpm");
 	}
-	if ($tmpfile_out) {
-	    unlink $tmpfile_out;
-	}
+    }
+
+    if (!$p) {
+	warn "Can't convert the moon image...";
     }
 
     $p;
@@ -674,10 +683,11 @@ sub tmpdir {
 
 # REPO BEGIN
 # REPO NAME resize_image /home/e/eserte/src/repository 
-# REPO MD5 45ad7ebee874dca0d5573c05994d83e1
+# REPO MD5 38e618e52577138af507a2f3370290e2
 =head2 resize_image(%args)
 
-Resize an image with the GD module. Arguments are:
+Resize an image with the GD module, or the netpbm package. Arguments
+are:
 
 =over 4
 
@@ -709,6 +719,8 @@ Width of the destination file.
 
 =back
 
+DEPENDENCY: is_is_path
+
 =cut
 
 sub resize_image {
@@ -719,6 +731,7 @@ sub resize_image {
     if (!defined $infmt) {
 	($infmt = $in) =~ s/^.*\.([^.]+)$/$1/;
     }
+    if ($infmt eq 'jpeg') { $infmt = 'jpg' }
     my $outfmt = $args{-outfmt};
     if (!defined $outfmt) {
 	($outfmt = $out) =~ s/^.*\.([^.]+)$/$1/;
@@ -726,48 +739,69 @@ sub resize_image {
     my $width  = $args{-width};
     my $height = $args{-height};
 
-    my $constructor =
-	{'png' => 'newFromPng',
-	 'xbm' => 'newFromXbm',
-	 'xpm' => 'newFromXpm',
-	 'gd2' => 'newFromGd2',
-	 'gd'  => 'newFromGd',
-	 'jpg' => 'newFromJpeg',
-	 'jpeg'=> 'newFromJpeg',
-	 'gif' => 'newFromGif', # for old GD's
-	}->{$infmt};
-    my $output_meth =
-	{'png' => 'png',
-	 'jpg' => 'jpeg',
-	 'jpeg'=> 'jpeg',
-	 'gd'  => 'gd',
-	 'gd2' => 'gd2',
-	 'gif' => 'gif', # for old GD's
-	}->{$outfmt};
-    if (!$constructor || !$output_meth) {
-	die "No constructor or output method found";
+    eval {
+	require GD;
+
+	my $constructor =
+	    {'png' => 'newFromPng',
+	     'xbm' => 'newFromXbm',
+	     'xpm' => 'newFromXpm',
+	     'gd2' => 'newFromGd2',
+	     'gd'  => 'newFromGd',
+	     'jpg' => 'newFromJpeg',
+	     'gif' => 'newFromGif', # for old GD's
+	    }->{$infmt};
+	my $output_meth =
+	    {'png' => 'png',
+	     'jpg' => 'jpeg',
+	     'jpeg'=> 'jpeg',
+	     'gd'  => 'gd',
+	     'gd2' => 'gd2',
+	     'gif' => 'gif', # for old GD's
+	    }->{$outfmt};
+	if (!$constructor || !$output_meth) {
+	    die "No constructor or output method found";
+	}
+
+	open(IN, $in) or die "Could not open $in: $!";
+	binmode IN;
+	my $in_img = GD::Image->$constructor(\*IN);
+	close IN;
+	$in_img or die "Could not recognize image data in $in";
+
+	my $out_img = GD::Image->new($width, $height);
+	$out_img or die "Could not create empty GD image";
+	$out_img->copyResized($in_img, 0, 0, 0, 0,
+			      $width, $height,
+			      $in_img->getBounds);
+	open(OUT, ">$out") or die "Can't write to $out: $!";
+	binmode OUT;
+	print OUT $out_img->$output_meth();
+	close OUT;
+    };
+    if ($@) {
+	warn $@ if $^W;
+	if (is_in_path("pnmscale")) {
+	    my $constructor =
+		{'gif' => 'giftopnm',
+		 'jpg' => 'djpeg',
+		 'png' => 'pngtopnm',
+		 'xpm' => 'xpmtoppm',
+		}->{$infmt};
+	    my $output =
+		{'gif' => 'ppmtogif',
+		 'jpg' => 'cjpeg',
+		 'png' => 'pnmtopng',
+		 'xpm' => 'ppmtoxpm',
+		}->{$outfmt};
+	    system("$constructor $in | " .
+		   "pnmscale -xsize $args{-width} -ysize $args{-height} | " .
+		   "$output > $out");
+	}
     }
-
-    require GD;
-
-    open(IN, $in) or die "Could not open $in: $!";
-    binmode IN;
-    my $in_img = GD::Image->$constructor(\*IN);
-    close IN;
-    $in_img or die "Could not recognize image data in $in";
-
-    my $out_img = GD::Image->new($width, $height);
-    $out_img or die "Could not create empty GD image";
-    $out_img->copyResized($in_img, 0, 0, 0, 0,
-			  $width, $height,
-			  $in_img->getBounds);
-    open(OUT, ">$out") or die "Can't write to $out: $!";
-    binmode OUT;
-    print OUT $out_img->$output_meth();
-    close OUT;
-
 }
 # REPO END
+
 
 return 1 if caller();
 
