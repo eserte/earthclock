@@ -11,6 +11,7 @@ WriteMakefile
 	    'Astro/moon.png'    => '$(INST_LIB)/Astro/moon.png',
 	    'Astro/moon.xbm.gz' => '$(INST_LIB)/Astro/moon.xbm.gz',
 	    'Astro/moon.xpm.gz' => '$(INST_LIB)/Astro/moon.xpm.gz',
+	    'Date/Calendar.pm'  => '$(INST_LIB)/Date/Calendar.pm',
 	   },
    'EXE_FILES' => ['earthclock'],
    'PREREQ_PM' => {'Tk'             => undef,
