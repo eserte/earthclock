@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: test.pl,v 1.1 2002/02/22 19:33:57 eserte Exp $
+# $Id: test.pl,v 1.2 2002/02/22 19:35:25 eserte Exp $
 # Author: Slaven Rezic
 #
 
@@ -22,7 +22,7 @@ BEGIN {
 
 BEGIN { plan tests => 1 }
 
-system("$^X -Mblib blib/scripts/earthclock &");
+system("$^X -Mblib blib/script/earthclock &");
 ok(1);
 
 __END__
