@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.60 2004/11/06 22:53:32 eserte Exp $
+# $Id: earthclock,v 1.61 2004/11/06 23:12:11 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002,2003 Slaven Rezic. All rights reserved.
@@ -104,6 +104,80 @@ the C<savevars> module is installed from CPAN, then settings are
 preserved after exiting the program. The configuration is written to
 C<~/.earthclockrc>.
 
+=head1 COMMAND LINE OPTIONS
+
+=over
+
+=item B<-pos> I<pos_spec>
+
+Set an xearth-compatible position. See the C<-pos> option in the
+L<xearth(1)> manpage.
+
+=item B<-postime> I<tzname>
+
+Set both the current time and the position to the timezone specifier
+I<tzname>. I<tzname> is usually a continent-place combination like
+C<Europe/Berlin> or C<America/New_York>. It is also possible to
+specify the place only (i.e. C<Berlin>).
+
+Note that the file /usr/share/zoneinfo/zone.tab has to be installed on
+your system for this option.
+
+=item B<-earthcmd> I<...>
+
+The earth picture producing program. You can choose among:
+
+=over
+
+=item xearth
+
+See L<xearth(1)>.
+
+=item xglobe
+
+See L<xglobe(1)>.
+
+=item "current Eumetsat"
+
+Get a satellite picture from the web, see L<above|/current Eumetsat>.
+
+=item "xearth.cgi"
+
+Get the picture via a cgi script, see L<above|/xearth.cgi>.
+
+=back
+
+=item B<-wait> I<time>
+
+The time in seconds for a new earth update. Default is 30 minutes.
+
+=item B<-geometry> I<geometry_spec>
+
+The X11 geometry specification.
+
+=item B<-xearthcgiurl> I<url>
+
+Specify an url for a cgi script producing an earth picture. See also
+the C<xearth.cgi> value for the L</-earthcmd> option.
+
+=item B<-test>
+
+Only for testing.
+
+=item B<-v>
+
+Be verbose, only for testing and debugging.
+
+=item B<-stayontop>
+
+Obsolete option. Makes the earthclock window stay on top.
+
+=item B<-autoraise>
+
+Obsolete option.
+
+=back
+
 =cut
 
 use Tk;
@@ -142,7 +216,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 ';
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.60 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.61 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
