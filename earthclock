@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.20 2000/08/30 00:37:36 eserte Exp $
+# $Id: earthclock,v 1.21 2000/09/03 13:21:24 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -14,7 +14,6 @@
 #
 
 use Tk;
-use X11::Protocol;
 use Getopt::Long;
 use Math::Trig;
 
@@ -34,19 +33,24 @@ my $tmpfile = "/tmp/earth-$$.gif";
 my $date;
 my $dflt_earthcmd;
 
-my %earthcmd =
-    (# tested with xearth 1.0
-     'xearth' => "xearth -nolabel -nomarkers -pos %p -size %w,%h -gif > %o",
+my %earthcmd;
+if (is_in_path("GET")) {
+    # satellite images...
+    $earthcmd{'current Meteosat-7'} = "GET http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG | djpeg -pnm | pnmscale -w %w -h %h > %o";
 
-     # tested with xglobe 0.2
-     'xglobe' => "cd /tmp; xglobe -nolabel -nomarkers -pos %p -size %w,%h -dump; mv xglobe-dump.bmp %o",
+    # not tested
+    $earthcmd{'current GMS-5'} = "GET http://rsd.gsfc.nasa.gov/goesg/earth/Weather/GMS-5/jpg/vis/4km/0latest.jpg | djpeg -pnm | pnmscale -w %w -h %h > %o";
+}
 
-     # satellite images...
-     'current Meteosat-7' => "GET http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG | djpeg -pnm | pnmscale -w %w -h %h > %o",
+if (is_in_path("xearth")) {
+    # tested with xearth 1.0
+    $earthcmd{'xearth'} = "xearth -nolabel -nomarkers -pos %p -size %w,%h -gif > %o";
+}
 
-     # not tested
-     'current GMS-5' => "GET http://rsd.gsfc.nasa.gov/goesg/earth/Weather/GMS-5/jpg/vis/4km/0latest.jpg | djpeg -pnm | pnmscale -w %w -h %h > %o",
-    );
+if (is_in_path("xglobe")) {
+    # tested with xglobe 0.2
+    $earthcmd{'xglobe'} = "cd /tmp; xglobe -nolabel -nomarkers -pos %p -size %w,%h -dump; mv xglobe-dump.bmp %o";
+}
 
 Getopt::Long::Configure("pass_through");
 GetOptions("pos=s" => \$pos,
@@ -58,7 +62,15 @@ GetOptions("pos=s" => \$pos,
 	  );
 
 if (!$dflt_earthcmd) {
-    $dflt_earthcmd = $earthcmd{'xearth'};
+    if (exists $earthcmd{'xearth'}) {
+	$dflt_earthcmd = $earthcmd{'xearth'};
+    } elsif (exists $earthcmd{'xglobe'}) {
+	$dflt_earthcmd = $earthcmd{'xglobe'};
+    } elsif (keys %earthcmd) {
+	$dflt_earthcmd = $earthcmd{(keys %earthcmd)[0]};
+    } else {
+	warn "No earth/globe method available. Please install xearth, xglobe or LWP.\n";
+    }
 }
 
 my($x,$y) = (0,0);
@@ -125,8 +137,16 @@ $top->bind("<Enter>" => sub {
 
 my($wrapper) = $top->wrapper;
 
-my $x11 = new X11::Protocol;
-$x11->init_extension('SHAPE') or die;
+my $x11;
+eval {
+    require X11::Protocol;
+    $x11 = new X11::Protocol;
+    $x11->init_extension('SHAPE') or die;
+};
+if ($@) {
+    warn $@;
+    $top->overrideredirect(0);
+}
 
 my $c = $top->Canvas(-border => 0,
 		     -height => $height,
@@ -150,17 +170,9 @@ $top->bind("<Visibility>" => sub {
 	       }
  	   });
 
-my $pixmap = $x11->new_rsrc;
-$x11->CreatePixmap($pixmap, $wrapper, 1, $width, $height);
-my $gc = $x11->new_rsrc;
-$x11->CreateGC($gc, $pixmap, 'foreground' => $x11->white_pixel);
-my $delgc = $x11->new_rsrc;
-$x11->CreateGC($delgc, $pixmap, 'foreground' => $x11->black_pixel);
-$x11->PolyFillRectangle($pixmap, $delgc,
-			[(0, 0), $width, $height]);
-$x11->PolyFillArc($pixmap, $gc, [0, 0, $width-1, $height-1, 0, 23040]);
-
-$x11->ShapeMask($wrapper, 'Bounding', 'Set', 0, 0, $pixmap);
+if ($x11) {
+    x11_shape_setup();
+}
 
 my $c_h = $c->createLine($width/2,$height/2,$width/2,$height/4,
 			 -width=>5,-fill=>"white");
@@ -182,7 +194,22 @@ for my $h (0..11) {
 $top->repeat(1000, \&draw_time);
 MainLoop;
 
+sub x11_shape_setup {
+    my $pixmap = $x11->new_rsrc;
+    $x11->CreatePixmap($pixmap, $wrapper, 1, $width, $height);
+    my $gc = $x11->new_rsrc;
+    $x11->CreateGC($gc, $pixmap, 'foreground' => $x11->white_pixel);
+    my $delgc = $x11->new_rsrc;
+    $x11->CreateGC($delgc, $pixmap, 'foreground' => $x11->black_pixel);
+    $x11->PolyFillRectangle($pixmap, $delgc,
+			    [(0, 0), $width, $height]);
+    $x11->PolyFillArc($pixmap, $gc, [0, 0, $width-1, $height-1, 0, 23040]);
+
+    $x11->ShapeMask($wrapper, 'Bounding', 'Set', 0, 0, $pixmap);
+}
+
 sub motion {
+    return unless $x11;
     my $w = shift;
     my $e = $w->XEvent;
     return unless $e->s =~ /B1-/;
@@ -203,8 +230,9 @@ sub draw_time {
     $h+=$m/60;
     $m+=$s/60;
 
-    if (!defined $last_earth_update ||
-	$last_earth_update+$wait<time) {
+    if ($dflt_earthcmd &&
+	(!defined $last_earth_update ||
+	 $last_earth_update+$wait<time)) {
 	$img->delete if $img;
 	my $thisearthcmd = $dflt_earthcmd;
 	$thisearthcmd =~ s/%p/$pos/g;
@@ -530,6 +558,58 @@ sub max {
 	$max = $_ if $_ > $max;
     }
     $max;
+}
+# REPO END
+
+# REPO BEGIN
+# REPO NAME is_in_path /home/e/eserte/src/repository 
+# REPO MD5 8ef726a767d6a3291c0cd8569ce761b1
+=head2 is_in_path($prog)
+
+Return the pathname of $prog, if the program is in the PATH, or undef
+otherwise.
+
+DEPENDENCY: file_name_is_absolute
+
+=cut
+
+sub is_in_path {
+    my($prog) = @_;
+    return $prog if (file_name_is_absolute($prog) and -x $prog);
+    require Config;
+    my $sep = $Config::Config{'path_sep'} || ':';
+    foreach (split(/$sep/o, $ENV{PATH})) {
+	return "$_/$prog" if -x "$_/$prog";
+    }
+    undef;
+}
+# REPO END
+
+# REPO BEGIN
+# REPO NAME file_name_is_absolute /home/e/eserte/src/repository 
+# REPO MD5 47355e35bcf03edac9ea12c6f8fff9a3
+=head2 file_name_is_absolute($file)
+
+Return true, if supplied file name is absolute. This is only necessary
+for older perls where File::Spec is not part of the system.
+
+=cut
+
+sub file_name_is_absolute {
+    my $file = shift;
+    my $r;
+    eval {
+        require File::Spec;
+        $r = File::Spec->file_name_is_absolute($file);
+    };
+    if ($@) {
+	if ($^O eq 'MSWin32') {
+	    $r = ($file =~ m;^([a-z]:(/|\\)|\\\\|//);i);
+	} else {
+	    $r = ($file =~ m|^/|);
+	}
+    }
+    $r;
 }
 # REPO END
 
