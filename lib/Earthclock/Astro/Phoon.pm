@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Phoon.pm,v 1.3 2000/08/29 22:32:46 eserte Exp $
+# $Id: Phoon.pm,v 1.4 2000/08/29 23:59:01 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -460,20 +460,20 @@ sub tk_shadow {
     $c->delete("shadow");
 
     my($a1, $a2) = ($w/2, 0);
-    my($b2, $m2) = ($w/2, $w/2);
+    my $b2 = $w/2;
     my($c1, $c2) = ($w/2, $w);
     my $m2 = ($c2-$a2)/2+$a2;
 
-    if ($angle < pi()/2) {
-	my $b1 = $w - ($w/2 * $angle/(pi()/2));
+    if ($angle < pi/2) {
+	my $b1 = $w - ($w/2 * $angle/(pi/2));
 	my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($b1))/(2*($a1-$b1));
 	$c->createOval($b1-($b1-$m1)*2,$m2-($b1-$m1),$b1,$m2+($b1-$m1),
 		       -fill => "black",
 		       -outline => "black",
 		       -tags => "shadow",
 		      );
-    } elsif ($angle < pi()) {
-	my $begin = ($w/2 * $angle/(pi()/2));
+    } elsif ($angle < pi) {
+	my $begin = ($w/2 * $angle/(pi/2));
 	for(my $x = $begin; $x<=$w; $x++) {
 	    my $b1 = $w-$x;
 	    my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($x))/(2*($a1-$x));
@@ -484,21 +484,22 @@ sub tk_shadow {
 			  -tags => "shadow",
 			 );
 	}
-    } elsif ($angle < 3*pi()/2) {
-	my $begin = ($w/2 * $angle/(pi()/2));
-	for(my $x = $begin; $x<=$w; $x++) {
-	    my $b1 = $w-$x;
-	    my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($x))/(2*($a1-$x));
-	    $c->createArc($b1,$m2-($x-$m1),$b1+($x-$m1)*2,$m2+($x-$m1),
+    } elsif ($angle < 3*pi/2) {
+	my $begin = $w - ($w/2)*($angle-pi) * 2/pi;
+	for(my $b1 = $begin; $b1<=$w; $b1++) {
+	    my $x = $w-$b1;
+	    my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($b1))/(2*($a1-$b1));
+	    my @c=($b1-($b1-$m1)*2,$m2-($b1-$m1),$b1,$m2+($b1-$m1));
+	    $c->createArc(@c,
 			  -fill=>"black",-outline=>"black",
 			  -style => "arc",
-			  -start => 90, -extent => 180,
+			  -start => -90, -extent => 180,
 			  -tags => "shadow",
 			 );
 	}
     } else {
-	my $x = $w - ($w/2 * ($angle-3*pi()/2)/(pi()/2));
-	my $b1 = $x+$w/2;#w-$x;
+	my $x = ($angle-3/2*pi)/(1/2*pi) * $w/2 + $w/2;
+	my $b1 = $w-$x;
 	my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($x))/(2*($a1-$x));
 	$c->createOval($b1,$m2-($x-$m1),$b1+($x-$m1)*2,$m2+($x-$m1),
 		       -fill => "black",
@@ -508,8 +509,22 @@ sub tk_shadow {
     }
 }
 
+# REPO BEGIN
+# REPO NAME sqr /home/e/eserte/src/repository 
+# REPO MD5 16b84a0c96e6a73e14dccb674f78be75
+=head2 sqr($n)
+
+Return the square of $n.
+
+=cut
+
+sub sqr { $_[0] * $_[0] }
+# REPO END
+
 
 return 1 if caller();
+
+__END__
 
 use Tk;
 my $top=tkinit;
@@ -528,12 +543,13 @@ my $h = $top->fontMetrics($fixf, -linespace)*$lines;
 
 warn "$w x $h";
 
-my $p = tk_photo($top,#jtime(localtime+86400*$i),
-		 -width => $w, -height => $h);
+my $p = Phoon::tk_photo($top,
+			-width => $w, -height => $h);
 
-my $c = $top->Canvas(-width => $w, -height => $h)->pack;
+my $c = $top->Canvas(-width => $w-1, -height => $h-1,
+		     -highlightthickness => 0)->pack;
 $c->createImage(0, 0, -image => $p, -anchor => "nw");
-$c->createText(0, 0, -text => $cal, -anchor => "nw",
+$c->createText($w/2, $w/2, -text => $cal, -anchor => "c",
 	       -font => "fixed",-fill => "yellow",
 	      -tags => "cal");
 
@@ -576,23 +592,6 @@ sub max {
 }
 # REPO END
 
-# REPO BEGIN
-# REPO NAME pi /home/e/eserte/src/repository 
-# REPO MD5 c36e29c0a7cfc05784032fff5b741475
-sub pi ()   { 4 * atan2(1, 1) } # 3.141592653
-# REPO END
-
-# REPO BEGIN
-# REPO NAME sqr /home/e/eserte/src/repository 
-# REPO MD5 16b84a0c96e6a73e14dccb674f78be75
-=head2 sqr($n)
-
-Return the square of $n.
-
-=cut
-
-sub sqr { $_[0] * $_[0] }
-# REPO END
 
 # REPO BEGIN
 # REPO NAME tk_sleep /home/e/eserte/src/repository 
