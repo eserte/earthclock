@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Phoon.pm,v 1.5 2000/08/30 00:36:50 eserte Exp $
+# $Id: Phoon.pm,v 1.6 2000/09/03 14:59:39 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -454,21 +454,78 @@ sub tk_photo {
 	}
     }
 
-    my $cmd;
-    if ($imagefile =~ /\.gz$/) {
-	$cmd = "zcat $imagefile | xbmtopbm ";
-    } else {
-	$cmd = "xbmtopbm $imagefile ";
-    }
-    $cmd .= "| pnmscale -xsize $args{-width} -ysize $args{-height} " .
-	    "| ppmtoxpm |";
+    my $p;
 
-    open(PBM, $cmd);
-    local($/) = undef;
-    my $buf = <PBM>;
-    close PBM;
-    my $p = $top->Photo(-data => $buf, -format => "xpm");
-#warn $p->width;
+    if (is_in_path("zcat") and
+	is_in_path("xbmtopbm") and
+	is_in_path("pnmscale") and
+	is_in_path("ppmtoxpm")) {
+
+	my $cmd;
+	if ($imagefile =~ /\.gz$/) {
+	    $cmd = "zcat $imagefile | xbmtopbm ";
+	} else {
+	    $cmd = "xbmtopbm $imagefile ";
+	}
+	$cmd .= "| pnmscale -xsize $args{-width} -ysize $args{-height} " .
+	        "| ppmtoxpm |";
+
+	open(PBM, $cmd);
+	binmode PBM;
+	local($/) = undef;
+	my $buf = <PBM>;
+	close PBM;
+	$p = $top->Photo(-data => $buf, -format => "xpm");
+    } else {
+
+	my $tmpfile_in;
+	my $tmpfile_out;
+
+	# force usage of xpm file because of bug in newFromXbm in gd 1.8.3
+	# and my libgd was not built with xpm, so I have to use png
+	$imagefile = "$FindBin::RealBin/moon.png";
+
+	if ($imagefile =~ /\.gz$/) {
+	    require Compress::Zlib;
+	    my $tmpfile_in = tmpdir() . "/xphoon-$$";
+
+	    my $gz = Compress::Zlib::gzopen($imagefile, "rb")
+		or die "Cannot open $imagefile: " . Compress::Zlib::gzerror();
+
+	    open(OUT, ">$tmpfile_in") or die "Can't write to $tmpfile_in: $!";
+	    binmode OUT;
+	    my $buffer;
+	    print OUT $buffer
+		while $gz->gzread($buffer) > 0 ;
+	    $gz->gzclose();
+
+	    $imagefile = $tmpfile_in;
+	}
+
+	$tmpfile_out = tmpdir() . "/xphoon-out-$$";
+
+	eval {
+
+	    require Tk::JPEG;
+
+	    resize_image(-in     => $imagefile,
+			 -out    => $tmpfile_out,
+			 -outfmt => "jpg",
+			 -width  => $args{-width},
+			 -height => $args{-height},
+			);
+	    $p = $top->Photo(-file => $tmpfile_out);
+	};
+	warn $@ if $@;
+
+	if ($tmpfile_in) {
+	    unlink $tmpfile_in;
+	}
+	if ($tmpfile_out) {
+	    unlink $tmpfile_out;
+	}
+    }
+
     $p;
 }
 
@@ -493,7 +550,7 @@ sub tk_shadow {
 		      );
     } elsif ($angle < pi) {
 	my $begin = ($w/2 * $angle/(pi/2));
-	for(my $x = $begin; $x<=$w; $x++) {
+	for(my $x = $begin; $x<=$w+5; $x++) {#XXX+5
 	    my $b1 = $w-$x;
 	    my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($x))/(2*($a1-$x));
 	    $c->createArc($b1,$m2-($x-$m1),$b1+($x-$m1)*2,$m2+($x-$m1),
@@ -506,7 +563,7 @@ sub tk_shadow {
 	}
     } elsif ($angle < 3*pi/2) {
 	my $begin = $w - ($w/2)*($angle - pi) * 2/pi;
-	for(my $b1 = $begin; $b1<=$w; $b1++) {
+	for(my $b1 = $begin; $b1<=$w+5; $b1++) {#XXX+5
 	    my $x = $w-$b1;
 	    my $m1 = (sqr($a1)+sqr($a2-$b2)-sqr($b1))/(2*($a1-$b1));
 	    my @c=($b1-($b1-$m1)*2,$m2-($b1-$m1),$b1,$m2+($b1-$m1));
@@ -543,6 +600,174 @@ Return the square of $n.
 sub sqr { $_[0] * $_[0] }
 # REPO END
 
+# REPO BEGIN
+# REPO NAME is_in_path /home/e/eserte/src/repository 
+# REPO MD5 8ef726a767d6a3291c0cd8569ce761b1
+=head2 is_in_path($prog)
+
+Return the pathname of $prog, if the program is in the PATH, or undef
+otherwise.
+
+DEPENDENCY: file_name_is_absolute
+
+=cut
+
+sub is_in_path {
+    my($prog) = @_;
+    return $prog if (file_name_is_absolute($prog) and -x $prog);
+    require Config;
+    my $sep = $Config::Config{'path_sep'} || ':';
+    foreach (split(/$sep/o, $ENV{PATH})) {
+	return "$_/$prog" if -x "$_/$prog";
+    }
+    undef;
+}
+# REPO END
+
+# REPO BEGIN
+# REPO NAME file_name_is_absolute /home/e/eserte/src/repository 
+# REPO MD5 47355e35bcf03edac9ea12c6f8fff9a3
+=head2 file_name_is_absolute($file)
+
+Return true, if supplied file name is absolute. This is only necessary
+for older perls where File::Spec is not part of the system.
+
+=cut
+
+sub file_name_is_absolute {
+    my $file = shift;
+    my $r;
+    eval {
+        require File::Spec;
+        $r = File::Spec->file_name_is_absolute($file);
+    };
+    if ($@) {
+	if ($^O eq 'MSWin32') {
+	    $r = ($file =~ m;^([a-z]:(/|\\)|\\\\|//);i);
+	} else {
+	    $r = ($file =~ m|^/|);
+	}
+    }
+    $r;
+}
+# REPO END
+
+# REPO BEGIN
+# REPO NAME tmpdir /home/e/eserte/src/repository 
+# REPO MD5 66f13045a8970a4545d814cccd9be848
+=head2 tmpdir()
+
+Return temporary directory for this system.
+
+=cut
+
+sub tmpdir {
+    foreach my $d ($ENV{TMPDIR}, $ENV{TEMP},
+		   "/tmp", "/var/tmp", "/usr/tmp", "/temp") {
+	next if !defined $d;
+	next if !-d $d || !-w $d;
+	return $d;
+    }
+    undef;
+}
+# REPO END
+
+# REPO BEGIN
+# REPO NAME resize_image /home/e/eserte/src/repository 
+# REPO MD5 45ad7ebee874dca0d5573c05994d83e1
+=head2 resize_image(%args)
+
+Resize an image with the GD module. Arguments are:
+
+=over 4
+
+=item -in
+
+Source image file.
+
+=item -infmt
+
+Format of the source image file (png, xbm, xpm, gd, gd2, jpg).
+Otherwise it is determined from the extension of the source file.
+
+=item -out
+
+Destination image file.
+
+=item -outfmt
+
+Format of the destination image file (png, gd, gd2, jpg).
+Otherwise it is determined from the extension of the destination file.
+
+=item -height
+
+Height of the destination file.
+
+=item -width
+
+Width of the destination file.
+
+=back
+
+=cut
+
+sub resize_image {
+    my(%args) = @_;
+    my $in     = $args{-in}  || die "No -in file specified";
+    my $out    = $args{-out} || die "No -out file specified";
+    my $infmt  = $args{-infmt};
+    if (!defined $infmt) {
+	($infmt = $in) =~ s/^.*\.([^.]+)$/$1/;
+    }
+    my $outfmt = $args{-outfmt};
+    if (!defined $outfmt) {
+	($outfmt = $out) =~ s/^.*\.([^.]+)$/$1/;
+    }
+    my $width  = $args{-width};
+    my $height = $args{-height};
+
+    my $constructor =
+	{'png' => 'newFromPng',
+	 'xbm' => 'newFromXbm',
+	 'xpm' => 'newFromXpm',
+	 'gd2' => 'newFromGd2',
+	 'gd'  => 'newFromGd',
+	 'jpg' => 'newFromJpeg',
+	 'jpeg'=> 'newFromJpeg',
+	 'gif' => 'newFromGif', # for old GD's
+	}->{$infmt};
+    my $output_meth =
+	{'png' => 'png',
+	 'jpg' => 'jpeg',
+	 'jpeg'=> 'jpeg',
+	 'gd'  => 'gd',
+	 'gd2' => 'gd2',
+	 'gif' => 'gif', # for old GD's
+	}->{$outfmt};
+    if (!$constructor || !$output_meth) {
+	die "No constructor or output method found";
+    }
+
+    require GD;
+
+    open(IN, $in) or die "Could not open $in: $!";
+    binmode IN;
+    my $in_img = GD::Image->$constructor(\*IN);
+    close IN;
+    $in_img or die "Could not recognize image data in $in";
+
+    my $out_img = GD::Image->new($width, $height);
+    $out_img or die "Could not create empty GD image";
+    $out_img->copyResized($in_img, 0, 0, 0, 0,
+			  $width, $height,
+			  $in_img->getBounds);
+    open(OUT, ">$out") or die "Can't write to $out: $!";
+    binmode OUT;
+    print OUT $out_img->$output_meth();
+    close OUT;
+
+}
+# REPO END
 
 return 1 if caller();
 
