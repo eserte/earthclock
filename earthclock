@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.4 2000/02/27 02:43:27 eserte Exp $
+# $Id: earthclock,v 1.5 2000/02/27 02:47:42 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -15,40 +15,6 @@
 
 use Tk;
 use X11::Protocol;
-#use C::DynaLib;
-
-#use X11::Protocol::Ext::SHAPE;
-
-#  $libx11 = new C::DynaLib "/usr/X11R6/lib/libX11.so";
-
-#  $libptk = new C::DynaLib "/usr/local/lib/perl5/site_perl/5.005/i386-freebsd/auto/Tk/Tk.so";
-
-#  warn $libx11;
-#  warn $libptk;
-#  $XReadBitmapFile = $libx11->DeclareSub({name => "XReadBitmapFile",
-#  					return => "i",
-#  					args => [PTR_TYPE,"i","p",
-#  						 #(PTR_TYPE)x5
-#  						 ("p")x5
-#  						]});
-#  #  						 PTR_TYPE,
-#  #  						 PTR_TYPE,
-#  #  						 PTR_TYPE,PTR_TYPE,PTR_TYPE]});
-#  $XCreateWindow = $libx11->DeclareSub({name => "XCreateWindow",
-#  				      return => "i",
-#  				      args => [PTR_TYPE,"i","i","i","i","i",
-#  					       "i","i",
-#  					       "i","i","i","i"]});
-#  $XOpenDisplay = $libx11->DeclareSub({name => "XOpenDisplay",
-#  				     return => PTR_TYPE,
-#  				     args => ["p"]});
-#  $XCloseDisplay = $libx11->DeclareSub({name => "XCloseDisplay",
-#  				     return => "",
-#  				     args => [PTR_TYPE]});
-#  $XWarpPointer = $libx11->DeclareSub({name => "XWarpPointer",
-#  				     return => "",
-#  				     args => [PTR_TYPE,"i","i","i","i",
-#  					      "I","I","i","i"]});
 
 $top = new MainWindow;
 $top->overrideredirect(1);
@@ -64,74 +30,42 @@ my($wrapper) = $top->wrapper;
 $x = new X11::Protocol;
 $x->init_extension('SHAPE') or die;
 
-$width=0;
-$height=0;
-$bitmap=0;
-$xhot=0;
-$yhot=0;
-
 sub motion{
     my $w = shift;
     my $e = $w->XEvent;
     return unless $e->s eq 'B1-';
     if (defined $lastx) {
-
-#$x->ConfigureWindow($wrapper, "x" => 40, "y" => 40);
-#($root,$parent) = $x->QueryTree($wrapper) if !defined $parent;
-#($root,$parent) = $x->QueryTree(hex($top->id)) if !defined $parent;
-#$parent=hex($top->id) if !defined $parent;
-
-my(%geom) = $x->GetGeometry($wrapper);
-my $X = $geom{x}+$e->X-$lastx;
-my $Y = $geom{y}+$e->Y-$lasty;
-$x->ConfigureWindow($wrapper, "x" => $X, "y" => $Y);
-
-#warn $x->GetGeometry($parent);
-#warn $x->GetGeometry(hex($top->id));
-
-#  	my $geom = $top->geometry;
-#  	if ($geom =~ /([+-]\d+)([+-]\d+)/) {
-#  	    ($X,$Y) = ($1,$2);
-#  	} else {
-#  	    warn $geom . "?";
-#  	    return;
-#  	}
-#          my($newx, $newy) = ($X,$Y);
-#  	if ($newx>=0) {
-#  	    $newx+=$e->X-$lastx;
-#  	    $newx=0 if ($newx<0);
-#  	    $newx="+$newx";
-#  	} else {
-#  	    $newx-=$e->X-$lastx;
-#  	    $newx="-0" if ($newx>0);
-#  	}
-#  	if ($newy>=0) {
-#  	    $newy+=$e->Y-$lasty;
-#  	    $newy=0 if ($newy<0);
-#  	    $newy="+$newy";
-#  	} else {
-#  	    $newy-=$e->Y-$lasty;
-#  	    $newy="-0" if ($newy>0);
-#  	}
-#  warn "(".$top->X.",".$top->Y.")=>($newx,$newy)";
-#  	#$top->MoveResizeWindow($newx,$newy,400,200);
-#  	$top->geometry("$newx$newy");
-#  	#$top->MoveResizeWindow($newx,$newy);
-#  #$top->idletasks;
+	my(%geom) = $x->GetGeometry($wrapper);
+	my $X = $geom{x}+$e->X-$lastx;
+	my $Y = $geom{y}+$e->Y-$lasty;
+	$x->ConfigureWindow($wrapper, "x" => $X, "y" => $Y);
     }
     $lastx = $e->X;
     $lasty = $e->Y;
 }
 
-#  for(1..5) {
-#  $label=$top->Label(-text => "bla blubber foo")->pack(-anchor => "w");
-#  #$label->bind("<Motion>" => \&motion);
-#  }
-
 $c = $top->Canvas(-border => 0,
 		  -height => 200,
 		  -width => 200,
 		  -highlightthickness => 0)->pack;
+
+$id = hex($top->id);
+$top->update;
+
+$pixmap = $x->new_rsrc;
+$x->CreatePixmap($pixmap, $wrapper, 1, 200, 200);
+my $gc = $x->new_rsrc;
+$x->CreateGC($gc, $pixmap, 'foreground' => $x->white_pixel);
+$gc;
+my $delgc = $x->new_rsrc;
+$x->CreateGC($delgc, $pixmap, 'foreground' => $x->black_pixel);
+$del_gc;
+$x->PolyFillRectangle($pixmap, $delgc,
+			[(0, 0), 200, 200]);
+
+$x->PolyFillArc($pixmap, $gc, [0, 0, 199, 199, 0, 23040]);
+
+$x->ShapeMask($wrapper, 'Bounding', 'Set', 0, 0, $pixmap);
 
 my $c_h = $c->createLine(100,100,100,50,-width=>5);
 my $c_m = $c->createLine(100,100,100,0,-width=>5);
@@ -146,71 +80,6 @@ for my $h (0..11) {
 		  );
 
 }
-
-$id = hex($top->id);
-warn "***id=$id";
-$top->update;
-
-#warn $top->geometry;
-#warn $top->X . "/" . $top->Y;
-
-
-#$x->ConfigureWindow($wrapper, "x" => 40, "y" => 40);
-
-$pixmap = $x->new_rsrc;
-warn $pixmap;
-#warn "wrapper=".($top->wrapper);
-warn $x->CreatePixmap($pixmap, $wrapper, 1, 200, 200);
-#$x->ClearArea($pixmap,0,0,120,120,0);
-my $gc = $x->new_rsrc;
-warn $x->CreateGC($gc, $pixmap, 'foreground' => $x->white_pixel);
-warn $gc;
-
-my $delgc = $x->new_rsrc;
-warn $x->CreateGC($delgc, $pixmap, 'foreground' => $x->black_pixel);
-warn $del_gc;
-$x->PolyFillRectangle($pixmap, $delgc,
-			[(0, 0), 200, 200]);
-
-$x->PolyFillArc($pixmap, $gc, [0, 0, 199, 199, 0, 23040]);
-
-my $idgc = $x->new_rsrc;
-warn $x->CreateGC($idgc, $id, 'foreground' => $x->black_pixel);
-$x->PolyFillArc($id, $idgc, [20, 20, 80, 80, 0, 23040]);
-
-#  for $i (1..50) {
-#      my $s = " " x $i;
-#      eval '
-#  	$y = $x->PutImage($pixmap, $gc, 1, 8, 8, 0, 0, 0, \'Bitmap\', $s);
-#      ';
-#      warn "$i: $y $@" if $@ eq "";
-#  }
-
-#  warn $x->PutImage($pixmap, $gc, 1, 8, 8, 0, 0, 0, 'Bitmap', " "x11);
-
-#$display =  $XOpenDisplay->(":0");
-#warn $display;
-#$XWarpPointer->($display, 0, $id, 100,100,10,20,30,40);
-
-#  my $newid= $XCreateWindow->($display, $id,
-#  		      10, 20, 100, 200, 2, 0,
-#  		      1,0,0,0);
-
-#  warn $XReadBitmapFile->($display, $newid, "/tmp/xeyes/golgomask.bit",
-#  			$width, $height, $bitmap, $xhot, $yhot);
-#  warn "$width, $height, $bitmap, $xhot, $yhot";
-#  warn $XCloseDisplay->($display);
-#  #exit;
-
-#q$x->CreatePixmap($id, 180, 60, 1);
-
-warn $x->ShapeQueryVersion;
-
-$x->ShapeMask($wrapper, 'Bounding', 'Set', 0, 0, $pixmap);
-
- foreach ($wrapper) { #, $id, $lid) {
-#     warn $x->ShapeRectangles($_, 'Bounding', 'Set', 0, 0, 'UnSorted', [20,20,20,30]);
- }
 
 
 $top->repeat(1000, \&draw_time);
