@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Calendar.pm,v 1.1 2000/09/04 23:24:25 eserte Exp $
+# $Id: Calendar.pm,v 1.2 2000/09/04 23:35:14 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -17,7 +17,7 @@ package Date::Calendar;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
 
 use Date::Calc qw(Days_in_Month Day_of_Week Day_of_Week_Abbreviation);
 use POSIX;
@@ -35,7 +35,7 @@ sub cal {
     foreach my $day_i (6 .. 12) { # 2000-08-06 till 2000-08-12
 	my $wday = POSIX::strftime("%A", 0,0,0,$day_i,8-1,2000-1900);
 	if ($wday eq '' || $wday =~ /^\?/) {
-	    $wday = Day_of_Week_Abbreviation( $day_i==6 ? 7 : $day_i-5 );
+	    $wday = Day_of_Week_Abbreviation( $day_i==6 ? 7 : $day_i-6 );
 	}
 	push @weekdays, substr($wday, 0, 2);
     }
