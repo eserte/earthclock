@@ -1,0 +1,8 @@
+Makefile.PL
+earthclock
+Astro/Phoon.pm
+Astro/moon.png
+Astro/moon.xbm.gz
+Astro/moon.xpm.gz
+Date/Calendar.pm
+MANIFEST
