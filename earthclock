@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.39 2002/01/31 22:48:03 eserte Exp $
+# $Id: earthclock,v 1.40 2002/01/31 23:48:39 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001 Slaven Rezic. All rights reserved.
@@ -56,9 +56,15 @@ BEGIN {
     if ($@) { eval q{ use vars     @vars } }
 }
 
-use vars qw($VERSION $sizes);
+use vars qw($VERSION $sizes $eventtop $icalevent);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/);
+eval '
+use lib "/home/e/eserte/lib/perl";
+use Tk::App::Reloader;
+$Tk::App::Reloader::VERBOSE = 1;
+'; warn $@ if $@;
+
+$VERSION = sprintf("%d.%02d", q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -142,6 +148,7 @@ if (defined $geometry) {
 
 # XXX GetOptions eats X11 config options before Tk::CmdLine ...
 my $top = new MainWindow;
+Tk::App::Reloader::shortcut() if defined &Tk::App::Reloader::shortcut;
 #$top->WidgetDump;
 
 my $id = hex($top->id);
@@ -189,6 +196,13 @@ $popup_menu->checkbutton(-label => "Stay on top",
 $popup_menu->checkbutton(-label => "Autoraise",
 			 -variable => \$autoraise,
 			);
+
+if (defined &Tk::App::Reloader::reload_new_modules) {
+    $popup_menu->command(-label => "Reload modules",
+			 -command => sub { Tk::App::Reloader::reload_new_modules() },
+			);
+}
+
 $popup_menu->command(-label => "Exit",
 		     -command => sub { $top->destroy },
 		    );
@@ -252,7 +266,12 @@ for (sort { $b->[0] <=> $a->[0] } values %$sizes) {
 ziffernblatt();
 
 $top->repeat(1000, \&draw_time);
+
+Tk::App::Reloader::check_loop() if defined &Tk::App::Reloader::check_loop;
+
 MainLoop;
+
+# RELOADER_START
 
 sub ziffernblatt {
     $c->delete("ziffernblatt");
@@ -612,6 +631,17 @@ sub show_cal {
 		 } else {
 		     $c->itemconfigure("current", -fill => "yellow");
 		 }
+	     });
+    $c->bind("date",
+	     "<1>" => sub {
+		 my $day = $find_day->($_[0]);
+		 return unless defined $day and $day ne "";
+		 require Tk::ICalEvent;
+		 if (!Tk::Exists($eventtop)) {
+		     $eventtop = $_[0]->Toplevel(-title => "Event");
+		     $icalevent = $eventtop->ICalEvent(-icalfile => "$ENV{HOME}/trash/test.ical")->pack(-fill => "both", -expand => 1);
+		 }
+		 $icalevent->set_date($year, $month, $day);
 	     });
 
     my $prev_month = $month-1;
