@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.13 2000/02/29 00:00:34 eserte Exp $
+# $Id: earthclock,v 1.14 2000/02/29 00:20:51 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -26,22 +26,23 @@ my $width = 200;
 my $height = 200;
 my $geometry;
 my $stay_on_top;
+my $tmpfile = "/tmp/earth-$$.gif";
+my $date;
+my $dflt_earthcmd;
+
 my %earthcmd =
-    (
-     # tested with xearth 1.0
+    (# tested with xearth 1.0
      'xearth' => "xearth -nolabel -nomarkers -pos %p -size %w,%h -gif > %o",
 
      # tested with xglobe 0.2
      'xglobe' => "cd /tmp; xglobe -nolabel -nomarkers -pos %p -size %w,%h -dump; mv xglobe-dump.bmp %o",
-     # worked 2000-02-25
-     'current meteosat' => "GET http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG | djpeg -pnm | pnmscale -w %w -h %h > %o",
+
+     # satellite images...
+     'current Meteosat-7' => "GET http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG | djpeg -pnm | pnmscale -w %w -h %h > %o",
+
+     # not tested
+     'current GMS-5' => "GET http://rsd.gsfc.nasa.gov/goesg/earth/Weather/GMS-5/jpg/vis/4km/0latest.jpg | djpeg -pnm | pnmscale -w %w -h %h > %o",
     );
-#$earthcmd = "djpeg -pnm /home/e/eserte/doc/met/DTOT.JPG | pnmscale -w %w -h %h > %o";
-#$earthcmd = "GET http://www/~eserte/doc/met/DTOT.JPG | djpeg -pnm | pnmscale -w %w -h %h > %o";
-#$earthcmd = "GET http://www.nottingham.ac.uk/pub/sat-images/DTOT.JPG | djpeg -pnm | pnmscale -w %w -h %h > %o";
-my $tmpfile = "/tmp/earth-$$.gif";
-my $date;
-my $dflt_earthcmd;
 
 GetOptions("pos=s" => \$pos,
 	   "wait=i" => \$wait,
