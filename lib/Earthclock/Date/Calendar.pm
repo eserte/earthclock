@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Calendar.pm,v 1.2 2000/09/04 23:35:14 eserte Exp $
+# $Id: Calendar.pm,v 1.3 2002/04/12 21:00:37 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -17,65 +17,90 @@ package Date::Calendar;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
-
-use Date::Calc qw(Days_in_Month Day_of_Week Day_of_Week_Abbreviation);
-use POSIX;
+$VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
 sub cal {
-    my $month = shift;
-    my $year = shift || (localtime[5])+1900;
-    my $len = 7*2+6;
-    my $r = "";
-
-    my $monline = strftime("%B %Y", 0,0,0,1,$month-1,$year-1900);
-    $r .= center_text($monline, $len) . "\n";
-
-    my @weekdays;
-    foreach my $day_i (6 .. 12) { # 2000-08-06 till 2000-08-12
-	my $wday = POSIX::strftime("%A", 0,0,0,$day_i,8-1,2000-1900);
-	if ($wday eq '' || $wday =~ /^\?/) {
-	    $wday = Day_of_Week_Abbreviation( $day_i==6 ? 7 : $day_i-6 );
-	}
-	push @weekdays, substr($wday, 0, 2);
-    }
-    $r .= join(" ", @weekdays) . "\n";
-
-    my $days_in_month = Days_in_Month($year, $month);
-    my $line = " " x $len;
-    for my $day (1 .. $days_in_month) {
-	my $dow = Day_of_Week($year, $month, $day);
-	$dow = 0 if $dow == 7;
-	substr($line, $dow*3, 2) = sprintf "%2d", $day;
-	if ($dow == 6 || $day == $days_in_month) {
-	    $r .= $line . "\n";
-	    $line = " " x $len;
+    my($m,$y,%args) = @_;
+    if (defined $args{-mondayfirst} && $args{-mondayfirst} eq 'auto') {
+	my $locale = $ENV{LC_TIME} || $ENV{LC_ALL} || $ENV{LANG} || "C";
+	if ($locale =~ /^de/) {
+	    $args{-mondayfirst} = 1;
+	} else {
+	    $args{-mondayfirst} = 0;
 	}
     }
+    my @l = (0,0,0,1,$m-1,$y-1900);
+    require Time::Local;
+    my $wd = (localtime(Time::Local::timelocal(@l)))[6];
+    my $days = month_days($m-1,$y-1900);
 
-    $r;
+    my $col;
+
+    if ($args{-mondayfirst}) {
+	$wd = 7 if $wd == 0;
+	$col = $wd-1;
+    } else {
+	$col = $wd;
+    }
+
+    my $s = "";
+
+    require POSIX;
+    my $mon = POSIX::strftime("%B", @l) . " " . $y;
+    $s .= " "x(int((20-length($mon))/2)) . $mon. "\n";
+
+    my @wkday;
+    for (1 .. 7) {
+	$l[3]=$_;
+	my $wkday = (localtime(Time::Local::timelocal(@l)))[6];
+	$wkday[$wkday] = POSIX::strftime("%a", @l);
+    }
+
+    $s .= join(" ", map { sprintf "%-2s", substr($wkday[$_],0,2) } $args{-mondayfirst} ? (1 .. 6, 0) : (0 .. 6)) . "\n";
+
+    $s .= "  " if ($col > 0);
+    $s .= "   "x($col-1) if ($col > 1);
+
+    my $lines = 0;
+    for my $day (1 .. $days) {
+	$s .= " " if ($col > 0);
+	$s .= sprintf "%2d", $day;
+	if (++$col > 6) {
+	    $s .= "\n";
+	    $lines++;
+	    $col=0;
+	}
+    }
+    if ($col != 0) {
+	$s .= "\n";
+	$lines++;
+    }
+
+    # add lines to line up with other months
+    for ($lines .. 5) {
+	$s .= "\n";
+    }
+
+    $s;
+}
+
+sub month_days {
+    my($m,$y) = @_;
+    my $d = [31,28,31,30,31,30,31,31,30,31,30,31]->[$m];
+    $d++ if $m == 1 && leapyear($y+1900);
+    $d;
 }
 
 # REPO BEGIN
-# REPO NAME center_text /home/e/eserte/src/repository 
-# REPO MD5 e6f3ceeea93f1a9be85d64a712bbf009
-=head2 center_text($text[, $linelength])
-
-Center the text. $linelength is optional and defaults to 80 characters.
-
-=cut
-
-sub center_text {
-    my $text = shift;
-    my $linelength = shift || 80; # XXX get from "tput co"?
-    my $spaces = ($linelength-length($text))/2;
-    my $r = "";
-    if ($spaces > 0) {
-	$r = " " x $spaces;
-    }
-    $r . $text;
+# REPO NAME leapyear /home/e/eserte/src/repository 
+# REPO MD5 65650e87112f3e2453743c0400608702
+sub leapyear {
+    my $year = $_[0];
+    ($year % 4 == 0 &&
+     (($year % 100 != 0) || ($year % 400 == 0)));
 }
 # REPO END
+
 
 1;
 
