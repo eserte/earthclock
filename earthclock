@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.16 2000/04/01 18:36:12 eserte Exp $
+# $Id: earthclock,v 1.17 2000/04/21 19:39:12 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000 Slaven Rezic. All rights reserved.
@@ -84,23 +84,7 @@ my $popup_menu = $top->Menu(-tearoff => 0);
 $popup_menu->command(-label => "",
 		     -command => sub {
 			 eval {
-			     my $tl = $top->Toplevel;
-			     $tl->title("Calendar");
-			     my $txt = $tl->Text(-width => 22,
-						 -height => 9,
-						 -font => "fixed")->pack;
-			     $txt->insert("1.0", join("", `cal`));
-			     my $inx = $txt->search
-				 (-regexp,
-				  '\b' . ((localtime)[3]) . '\b',
-				  "3.0"
-				 );
-			     $txt->tagConfigure("today",
-						-foreground => "red");
-			     $txt->tagAdd("today", $inx,
-					  "$inx + " .
-					  (length((localtime)[3])) . "c");
-			     warn $inx;
+			     create_cal();
 			 };
 			 warn $@ if $@;
 		     });
@@ -262,6 +246,80 @@ sub parse_geometry_string {
 	$extends[1] = $2;
     }
     @extends;
+}
+
+sub create_cal {
+    my $tl = $top->Toplevel;
+    $tl->title("Calendar");
+    my $txt = $tl->Text(-width => 22,
+			-height => 9,
+			-font => "fixed")->pack;
+    my $FireButton = "Button";
+    eval {
+	require Tk::FireButton;
+	$FireButton = "FireButton";
+    };
+    my $prev = $tl->$FireButton(-text => "<",
+				-padx => 0, -pady => 0,
+				-font => "5x7")->place('-x' => 2, '-y' => 2);
+    my $next = $tl->$FireButton(-text => ">",
+				-padx => 0, -pady => 0,
+				-font => "5x7")->place(-relx => 1,
+						       '-x' => -14, '-y' => 2,
+						      );
+    $txt->{Prev} = $prev;
+    $txt->{Next} = $next;
+    show_cal($txt);
+}
+
+sub show_cal {
+    my($txt, $month, $year) = @_;
+    my $current_month;
+    my(@l) = localtime;
+    if (!defined $month) {
+	$month = $l[4]+1;
+	$year  = $l[5]+1900;
+	$current_month++;
+    } elsif ($month == $l[4]+1 &&
+	     $year  == $l[5]+1900) {
+	$current_month++;
+    }
+    $txt->delete("1.0", "end");
+    $txt->insert("1.0", join("", `cal $month $year`));
+    my $inx = $txt->search
+	(-regexp,
+	 '\b' . ((localtime)[3]) . '\b',
+	 "3.0"
+	);
+    if ($current_month) {
+	$txt->tagConfigure("today",
+			   -foreground => "red");
+	$txt->tagAdd("today", $inx,
+		     "$inx + " .
+		     length($l[3]) . "c");
+    }
+
+    my $prev_month = $month-1;
+    my $prev_year  = $year;
+    if ($prev_month < 1) {
+	$prev_month = 12;
+	$prev_year  = $year - 1;
+    }
+
+    my $next_month = $month+1;
+    my $next_year  = $year;
+    if ($next_month > 12) {
+	$next_month = 1;
+	$next_year  = $year + 1;
+    }
+
+    $txt->{Prev}->configure(-command => sub { show_cal($txt,
+						       $prev_month,
+						       $prev_year) });
+
+    $txt->{Next}->configure(-command => sub { show_cal($txt,
+						       $next_month,
+						       $next_year) });
 }
 
 END {
