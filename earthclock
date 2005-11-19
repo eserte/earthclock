@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.62 2004/11/06 23:56:26 eserte Exp $
+# $Id: earthclock,v 1.63 2005/11/19 23:01:51 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 2000,2001,2002,2003 Slaven Rezic. All rights reserved.
@@ -72,10 +72,12 @@ Change the size of the earth. This will cause a refetch of the image.
 =item Stay on top
 
 (Does not work yet --- the window is always on top of all other windows)
+(This is not true if X11::Protocol was not installed)
 
 =item Autoraise
 
 (Does not work yet --- the window is always on top of all other windows)
+(This is not true if X11::Protocol was not installed)
 
 =item Alarm list
 
@@ -216,7 +218,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 ';
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.62 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -324,7 +326,9 @@ Tk::App::Reloader::shortcut() if defined &Tk::App::Reloader::shortcut;
 
 my $id = hex($top->id);
 $top->overrideredirect(1);
-$top->geometry($width."x".$height."+".$x."+".$y);
+$x = "+$x" if $x !~ /^[-+]/;
+$y = "+$y" if $y !~ /^[-+]/;
+$top->geometry($width."x".$height.$x.$y);
 
 my($lastx,$lasty);
 my $last_earth_update;
@@ -656,7 +660,7 @@ sub parse_geometry_string {
 	$extends[2] = $1;
 	$extends[3] = $2;
     }
-    if ($geometry =~ /[-+](\d+)[-+](\d+)/) {
+    if ($geometry =~ /([-+]\d+)([-+]\d+)/) {
 	$extends[0] = $1;
 	$extends[1] = $2;
     }
