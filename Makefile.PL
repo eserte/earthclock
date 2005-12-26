@@ -82,6 +82,9 @@ sub MY::postamble {
 rsync-xearth.cgi:
 	rsync -Pvzr xearth.cgi user.cs.tu-berlin.de:www/cgi/xearth.cgi
 
+SF_PROJECT=ptktools
+SF_PACKAGE=earthclock
+
 .include "../perl.release.mk"
 .include "../perl.cvs.mk"
 
