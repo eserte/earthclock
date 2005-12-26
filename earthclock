@@ -2,10 +2,10 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.63 2005/11/19 23:01:51 eserte Exp $
+# $Id: earthclock,v 1.64 2005/12/26 10:37:13 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 2000,2001,2002,2003 Slaven Rezic. All rights reserved.
+# Copyright (C) 2000,2001,2002,2003,2005 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -218,7 +218,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 ';
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/);
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -248,7 +248,7 @@ my $v;
 #my $eumetsat_list_url = "http://oiswww.eumetsat.org/IDDS-cgi/listImages?a=0,m=7,f=1,c=2,o=1,s=0,n=6,d=1,v=400,p=0";
 #my($sat_w,$sat_h,$sat_pad_x,$sat_pad_y) = (589, 589, 12, 12);
 # MET-8, Colour
-my $eumetsat_list_url = "http://oiswww.eumetsat.org/IDDS-cgi/listImages?a=0,m=8,f=1,c=9,o=1,s=0,n=6,d=1,v=400,p=0"; # Colour
+my $eumetsat_list_url_fmt = "http://oiswww.eumetsat.org/IDDS-cgi/listImages.pl?m=bnw,a=0,sa=8,pr=BNW,f=1,c=IR_108,se=0,n=6,d=1,v=400,pp=0,t=%s"; # Colour, full disc, date as %s
 my($sat_w,$sat_h,$sat_pad_x,$sat_pad_y) = (800,800,20,20);
 my $eumetsat_root_url = "http://oiswww.eumetsat.org";
 my $last_eumetsat_image;# XXX not used, see below
@@ -622,7 +622,8 @@ sub draw_time {
 		$thisearthcmd->(-pos => $pos,
 				-width => $width,
 				-height => $height,
-				-tmpfile => $tmpfile);
+				-tmpfile => $tmpfile,
+				-forcedraw => ($args{-forcedraw} || !defined $last_earth_update));
 	    }
 
 	    if (-r $tmpfile and -s $tmpfile) {
@@ -967,8 +968,11 @@ sub get_eumetsat_image {
     my $ua = get_ua();
     return if !$ua;
     if ($test) {
-	$eumetsat_list_url = "file:///home/e/eserte/trash/listImages.pl?m=0,c=1,o=0,s=0,f=1,a=0,n=6,d=1,v=400,p=0";
+	$eumetsat_list_url_fmt = "file:///home/e/eserte/trash/listImages.pl?m=0,c=1,o=0,s=0,f=1,a=0,n=6,d=1,v=400,p=0";
     }
+    my @l = gmtime;
+    my $now = sprintf "%04d%02d%02d%02d%02d", $l[5]+1900, $l[4]+1, @l[3,2,1];
+    my $eumetsat_list_url = sprintf $eumetsat_list_url_fmt, $now;
     my $resp = $ua->get($eumetsat_list_url);
     if (!$resp->is_success) {
 	if ($resp->is_error) {
@@ -1041,7 +1045,7 @@ sub get_sat_image {
 	$resp = $ua->request($req, $tmpjpeg);
     }
 
-    if ($resp->is_success) {
+    if ($resp->is_success || ($resp->code == 304 && $args{-forcedraw})) {
 	(my $infmt = $resp->header('Content-Type')) =~ s|^image/||;
 
 	if (exists $args{-resize} && $args{-resize} == 0 && !$args{-crop}) {
