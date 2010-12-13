@@ -2,10 +2,10 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.67 2007/05/06 15:04:16 eserte Exp $
+# $Id: earthclock,v 1.68 2010/12/13 21:37:09 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 2000,2001,2002,2003,2005 Slaven Rezic. All rights reserved.
+# Copyright (C) 2000,2001,2002,2003,2005,2009 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -20,9 +20,9 @@ earthclock - a nice clock displaying the earth
 =head1 DESCRIPTION
 
 This is a clock displaying the shaded image of the earth. This program
-needs the xearth or xglobe program for generation of the current earth
-shade. Alternatively, the current eumetsat picture can be fetched from
-the WWW and displayed.
+needs the xplanet, xearth, or xglobe program for generation of the
+current earth shade. Alternatively, the current eumetsat picture can
+be fetched from the WWW and displayed.
 
 Additionally, it is possible to show a calendar of months with the
 phases of the moon.
@@ -45,15 +45,10 @@ By clicking on the current date a calendar window will pop up.
 Forces an update of the earth image. Normally the update is done every
 half an hour.
 
-=item current Eumetsat
+=item xplanet
 
-Fetch the current satellite image from the eumetsat site
-(L<http://www.eumetsat.de>). These images are copyrighted by EUMETSAT.
-
-=item xearth.cgi
-
-Get the image of the earth from an xearth.cgi script (not publically
-available).
+Get the image of the earth from the external L<xplanet(1)> program.
+This menu item is only available if xplanet is installed on the system.
 
 =item xearth
 
@@ -64,6 +59,16 @@ This menu item is only available if xearth is installed on the system.
 
 Get the image of the earth from the external L<xglobe(1)> program.
 This menu item is only available if xglobe is installed on the system.
+
+=item current Eumetsat
+
+Fetch the current satellite image from the eumetsat site
+(L<http://www.eumetsat.de>). These images are copyrighted by EUMETSAT.
+
+=item xearth.cgi
+
+Get the image of the earth from an xearth.cgi script (not publically
+available).
 
 =item Size
 
@@ -110,10 +115,21 @@ C<~/.earthclockrc>.
 
 =over
 
+=item B<-longitude>
+
+Set the longitude of the observer position. This option also changes
+the longitude portion in C<-pos>.
+
+=item B<-latitude>
+
+Set the latitude of the observer position. This option also changes
+the latitude portion in C<-pos>.
+
 =item B<-pos> I<pos_spec>
 
 Set an xearth-compatible position. See the C<-pos> option in the
-L<xearth(1)> manpage.
+L<xearth(1)> manpage. This option also sets C<-longitude> and
+C<-latitude>.
 
 =item B<-postime> I<tzname>
 
@@ -130,6 +146,15 @@ your system for this option.
 The earth picture producing program. You can choose among:
 
 =over
+
+=item best
+
+Choose the "best" available program for producing the earth picture.
+The check order is: xplanet, xearth, xglobe.
+
+=item xplanet
+
+See L<xplanet(1)>.
 
 =item xearth
 
@@ -205,7 +230,8 @@ BEGIN {
 use warnings;
 
 BEGIN {
-    my @vars = qw($width $height $pos $pos_time $wait $stay_on_top $autoraise
+    my @vars = qw($width $height $pos $latitude $longitude $pos_time
+		  $wait $stay_on_top $autoraise
 		  $dflt_earthcmd $xearth_cgi_url);
     eval           q{ use savevars @vars };
     if ($@) { eval q{ use vars     @vars } }
@@ -219,7 +245,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 ';
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.67 $ =~ /(\d+)\.(\d+)/);
+$VERSION = 2.00;
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -228,7 +254,9 @@ $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "huge"   => [500,500, 9,9,7],
 	 };
 
-$pos = "fixed,53,13" unless defined $pos;
+$longitude = 13 unless defined $longitude;
+$latitude = 53 unless defined $latitude;
+$pos = "fixed,$latitude,$longitude" unless defined $pos;
 $wait = 30*60 unless defined $wait && $wait >= 60;
 $width = 200  unless defined $width && $width >= 30;
 $height = 200 unless defined $height && $height >= 30;
@@ -249,10 +277,10 @@ my $v;
 #my $eumetsat_list_url = "http://oiswww.eumetsat.org/IDDS-cgi/listImages?a=0,m=7,f=1,c=2,o=1,s=0,n=6,d=1,v=400,p=0";
 #my($sat_w,$sat_h,$sat_pad_x,$sat_pad_y) = (589, 589, 12, 12);
 # MET-8, Colour
-my $eumetsat_list_url_fmt = "http://oiswww.eumetsat.org/IDDS-cgi/listImages.pl?m=bnw,a=0,sa=8,pr=BNW,f=1,c=IR_108,se=0,n=6,d=1,v=400,pp=0,t=%s"; # Colour, full disc, date as %s
-my($sat_w,$sat_h,$sat_pad_x,$sat_pad_y) = (800,800,20,20);
+#my $eumetsat_list_url_fmt = "http://oiswww.eumetsat.org/IDDS-cgi/listImages.pl?m=bnw,a=0,sa=8,pr=BNW,f=1,c=IR_108,se=0,n=6,d=1,v=400,pp=0,t=%s"; # Colour, full disc, date as %s
+my($sat_w,$sat_h,$sat_pad_x,$sat_pad_y) = (800,800,12,20);
 my $eumetsat_root_url = "http://oiswww.eumetsat.org";
-my $last_eumetsat_image;# XXX not used, see below
+my $last_eumetsat_image = "http://oiswww.eumetsat.org/IPPS/html/latestImages/EUMETSAT_MSG_VIS006Color-all.jpg";
 my $test_url       = "http://www/~eserte/test/test.jpg";
 
 my $ua;
@@ -260,9 +288,14 @@ my $ua;
 $SIG{INT} = \&cleanup;
 
 my %earthcmd;
-$earthcmd{'current Eumetsat'} = \&get_eumetsat_image;
+if (eval q{ require Tie::IxHash; 1 }) {
+    tie %earthcmd, 'Tie::IxHash'; # preserve order for menu items
+}
 
-$earthcmd{'xearth.cgi'}         = \&get_xearth_cgi_image;
+if (is_in_path("xplanet")) {
+    # tested with xplanet 1.2.0
+    $earthcmd{'xplanet'} = "xplanet -radius 50 -num_times 1 -latitude %{lat} -longitude %{lon} -geometry %wx%h -output %o";
+}
 
 if (is_in_path("xearth")) {
     # tested with xearth 1.0
@@ -274,10 +307,29 @@ if (is_in_path("xglobe")) {
     $earthcmd{'xglobe'} = "cd " . tmpdir() . "; xglobe -nolabel -nomarkers -pos %p -size %w,%h -dump; mv xglobe-dump.bmp %o";
 }
 
+$earthcmd{'current Eumetsat'} = \&get_eumetsat_image;
+
+$earthcmd{'xearth.cgi'}         = \&get_xearth_cgi_image;
+
 if (ref $dflt_earthcmd eq 'CODE') { undef $dflt_earthcmd }
 
 Getopt::Long::Configure("pass_through");
-GetOptions("pos=s" => \$pos,
+GetOptions("pos=s" => sub {
+	       $pos = $_[1];
+	       my @pos = split /,/, $pos;
+	       $latitude = $pos[1];
+	       $longitude = $pos[2];
+	   },
+	   "longitude=f" => sub {
+	       $longitude = $_[1];
+	       $pos = "fixed,0,0" if (!$pos);
+	       $pos =~ s{^(.*,.*,).*}{$1$longitude};
+	   },
+	   "latitude=f" => sub {
+	       $latitude = $_[1];
+	       $pos = "fixed,0,0" if (!$pos);
+	       $pos =~ s{^(.*,).*(,.*)}{$1$latitude$2};
+	   },
 	   "postime|timepos=s" => \$pos_time,
 	   "wait=i" => \$wait,
 	   "geometry=s" => \$geometry,
@@ -298,14 +350,16 @@ if ($test) {
 }
 
 if (!$dflt_earthcmd) {
-    if (exists $earthcmd{'xearth'}) {
+    if (exists $earthcmd{'xplanet'}) {
+	$dflt_earthcmd = $earthcmd{'xplanet'};
+    } elsif (exists $earthcmd{'xearth'}) {
 	$dflt_earthcmd = $earthcmd{'xearth'};
     } elsif (exists $earthcmd{'xglobe'}) {
 	$dflt_earthcmd = $earthcmd{'xglobe'};
     } elsif (keys %earthcmd) {
 	$dflt_earthcmd = $earthcmd{(keys %earthcmd)[0]};
     } else {
-	warn "No earth/globe method available. Please install xearth, xglobe or LWP.\n";
+	warn "No xplanet/xearth/xglobe method available. Please install xplanet, xearth, xglobe or LWP.\n";
     }
 }
 
@@ -339,7 +393,7 @@ my($shape_pixmap);
 
 $top->bind("<Motion>" => \&motion);
 $top->bind("<ButtonPress-1>" => sub { $top->raise; });
-$top->bind("<ButtonRelease-1>" => sub { undef $lastx });
+$top->bind("<ButtonRelease-1>" => sub { $top->configure(-cursor => undef); undef $lastx });
 $top->bind("<c>" => \&create_cal_fail_safe); # XXX nimmt keine key-events an...
 
 my $popup_menu = $top->Menu(-tearoff => 0);
@@ -350,7 +404,7 @@ $popup_menu->separator;
 $popup_menu->command(-label => "Force earth update",
 		     -command => sub { undef $last_earth_update },
 		    );
-foreach (sort keys %earthcmd) {
+foreach (keys %earthcmd) {
     my $l = $_;
     $popup_menu->command(-label => "· $l",
 			 -command => sub {
@@ -515,6 +569,7 @@ sub set_size {
     $top->geometry($width."x".$height);
     $c->configure(-height => $height,
 		  -width  => $width);
+    $c->configure(-scrollregion => [0,0,$width,$height]);
 
     $c->itemconfigure($c_h, -width => $c_h_width);
     $c->itemconfigure($c_m, -width => $c_m_width);
@@ -566,6 +621,7 @@ sub motion {
     my $w = shift;
     my $e = $w->XEvent;
     return unless $e->s =~ /B1-/;
+    $top->configure(-cursor => 'fleur'); 
     if (defined $lastx) {
 	my(%geom) = $x11->GetGeometry($wrapper);
 	my $X = $geom{x}+$e->X-$lastx;
@@ -649,10 +705,12 @@ sub draw_time {
 
 sub subst_exe_string {
     my $s = shift;
-    $s =~ s/%p/$pos/g;
-    $s =~ s/%w/$width/g;
-    $s =~ s/%h/$height/g;
-    $s =~ s/%o/$tmpfile/g;
+    $s =~ s/\%p/$pos/g;
+    $s =~ s/\%{lon}/$longitude/g;
+    $s =~ s/\%{lat}/$latitude/g;
+    $s =~ s/\%w/$width/g;
+    $s =~ s/\%h/$height/g;
+    $s =~ s/\%o/$tmpfile/g;
     $s;
 }
 
@@ -969,34 +1027,35 @@ sub get_eumetsat_image {
     my(%args) = @_;
     my $ua = get_ua();
     return if !$ua;
-    if ($test) {
-	$eumetsat_list_url_fmt = "file:///home/e/eserte/trash/listImages.pl?m=0,c=1,o=0,s=0,f=1,a=0,n=6,d=1,v=400,p=0";
-    }
-    my @l = gmtime;
-    my $now = sprintf "%04d%02d%02d%02d%02d", $l[5]+1900, $l[4]+1, @l[3,2,1];
-    my $eumetsat_list_url = sprintf $eumetsat_list_url_fmt, $now;
-    my $resp = $ua->get($eumetsat_list_url);
-    if (!$resp->is_success) {
-	if ($resp->is_error) {
-	    warn $resp->error_as_HTML;
-	}
-	return;
-    }
-    my $url;
-    my $content = $resp->content;
-    while($content =~ m|(/~idds/images/out/.*\.jpg)|g) {
-	$url = $1;
-    }
-    return if (!defined $url);
-    $url = "$eumetsat_root_url$url";
-    if ($test) {
-	$url = "file:///home/e/eserte/trash/DTOT_M_20030328_183000.jpg";
-    }
-    # XXX This is not used because get_sat_image probably needs to
-    # use another geometry.... wait for a better solution.
-    #return if (defined $last_eumetsat_image && $url eq $last_eumetsat_image);
-    warn "GET $url\n" if $v;
-    $last_eumetsat_image = $url;
+#     if ($test) {
+# 	$eumetsat_list_url_fmt = "file:///home/e/eserte/trash/listImages.pl?m=0,c=1,o=0,s=0,f=1,a=0,n=6,d=1,v=400,p=0";
+#     }
+#     my @l = gmtime;
+#     my $now = sprintf "%04d%02d%02d%02d%02d", $l[5]+1900, $l[4]+1, @l[3,2,1];
+#     my $eumetsat_list_url = sprintf $eumetsat_list_url_fmt, $now;
+#     my $resp = $ua->get($eumetsat_list_url);
+#     if (!$resp->is_success) {
+# 	if ($resp->is_error) {
+# 	    warn $resp->error_as_HTML;
+# 	}
+# 	return;
+#     }
+#     my $url;
+#     my $content = $resp->content;
+#     while($content =~ m|(/~idds/images/out/.*\.jpg)|g) {
+# 	$url = $1;
+#     }
+#     return if (!defined $url);
+#     $url = "$eumetsat_root_url$url";
+#     if ($test) {
+# 	$url = "file:///home/e/eserte/trash/DTOT_M_20030328_183000.jpg";
+#     }
+#     # XXX This is not used because get_sat_image probably needs to
+#     # use another geometry.... wait for a better solution.
+#     #return if (defined $last_eumetsat_image && $url eq $last_eumetsat_image);
+#     warn "GET $url\n" if $v;
+#     $last_eumetsat_image = $url;
+    my $url = $last_eumetsat_image;
     $args{-crop} = [$sat_pad_x,$sat_pad_y,$sat_w-$sat_pad_x, $sat_h-$sat_pad_y];
     get_sat_image($url, -mirror => 1, %args);
 }
@@ -1393,11 +1452,11 @@ sub set_pos_and_time {
 	    if (!defined $lat_sgn) {
 		warn "Can't parse coordinate $coordinates, ignoring position.\n";
 	    } else {
-		my $lat = $lat_deg + $lat_min/60 + ($lat_sec||0)/3600;
-		$lat *= -1 if $lat_sgn eq '-';
-		my $lon = $lon_deg + $lon_min/60 + ($lon_sec||0)/3600;
-		$lon *= -1 if $lon_sgn eq '-';
-		$pos = "fixed,$lat,$lon";
+		$latitude = $lat_deg + $lat_min/60 + ($lat_sec||0)/3600;
+		$latitude *= -1 if $lat_sgn eq '-';
+		$longitude = $lon_deg + $lon_min/60 + ($lon_sec||0)/3600;
+		$longitude *= -1 if $lon_sgn eq '-';
+		$pos = "fixed,$latitude,$longitude";
 	    }
 	    last;
 	}
@@ -1413,7 +1472,7 @@ sub _get_tempfile {
     my $tmpfile;
     if (eval { require File::Temp }) {
 	(undef, $tmpfile) = File::Temp::tempfile(UNLINK => 1,
-						 SUFFIX => '_earthclock.tmp',
+						 SUFFIX => '_earthclock.gif',
 						);
     } else {
 	$tmpfile = tmpdir() . "/$base";
