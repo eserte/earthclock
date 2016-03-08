@@ -10,5 +10,6 @@ lib/Earthclock/Tk/ICalEvent.pm
 lib/Earthclock/BBBikeAlarm.pm
 test.pl
 MANIFEST
+MANIFEST.SKIP
 xearth.cgi
 README
