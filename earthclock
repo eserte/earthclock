@@ -2,10 +2,9 @@
 # -*- perl -*-
 
 #
-# $Id: earthclock,v 1.68 2010/12/13 21:37:09 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 2000,2001,2002,2003,2005,2009 Slaven Rezic. All rights reserved.
+# Copyright (C) 2000,2001,2002,2003,2005,2009,2016 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -187,6 +186,21 @@ The X11 geometry specification.
 Specify an url for a cgi script producing an earth picture. See also
 the C<xearth.cgi> value for the L</-earthcmd> option.
 
+=item B<-noshape>
+
+Don't use the X11 Shape extension.
+
+=item B<-sticky>
+
+Make the window "sticky". This applies only if B<-noshape> is set
+(when the X11 Shape extension is used, then the window is
+automatically done sticky), and only for supporting X11 window
+managers.
+
+=item B<-topmost>
+
+Make the window "topmost". This applies only if B<-noshape> is set.
+
 =item B<-test>
 
 Only for testing.
@@ -245,7 +259,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 ';
 
-$VERSION = 2.00;
+$VERSION = 2.01;
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -268,6 +282,9 @@ my $tmpfile = _get_tempfile("earth-$$.image");
 
 my $geometry;
 my $date;
+my $use_shape = 1;
+my $use_sticky = 0;
+my $use_topmost = 0;
 my $test = 0;
 my $v;
 
@@ -337,6 +354,9 @@ GetOptions("pos=s" => sub {
 	   "earthcmd=s" => \$dflt_earthcmd,
 	   "autoraise!" => \$autoraise,
 	   "xearthcgiurl=s" => \$xearth_cgi_url,
+	   'shape!' => \$use_shape,
+	   'sticky!' => \$use_sticky,
+	   'topmost!' => \$use_topmost,
 	   "test!" => \$test,
 	   "v!" => \$v,
 	  );
@@ -483,6 +503,7 @@ my($wrapper) = $top->wrapper;
 
 my $x11;
 eval {
+    die "Don't use SHAPE extension (specified by option)\n" if !$use_shape;
     require X11::Protocol;
     $x11 = new X11::Protocol;
     $x11->init_extension('SHAPE') or die "SHAPE extension not available";
@@ -490,6 +511,24 @@ eval {
 if ($@) {
     warn $@;
     $top->overrideredirect(0);
+
+    if ($use_sticky) {
+	$Tk::platform = $Tk::platform; # peacify -w
+	if ($Tk::platform eq 'unix') {
+	    my($wrapper) = $top->wrapper;
+	    # set sticky flag for gnome and fvwm2
+	    eval q{
+		$top->property('set','_WIN_STATE','CARDINAL',32,[1],$wrapper); # sticky
+		$top->property('set','_WIN_LAYER','CARDINAL',32,[6],$wrapper); # ontop
+	    };
+	    warn $@ if $@;
+	}
+    }
+
+    if ($use_topmost) {
+	eval { $top->attributes(-topmost => 1) };
+	warn $@ if $@;
+    }
 }
 
 my $c = $top->Canvas(-border => 0,
