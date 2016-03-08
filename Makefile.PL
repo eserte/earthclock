@@ -5,7 +5,6 @@ my $ver = MY->parse_version("earthclock");
 #my $changes_file = parse_recent_changelog();
 
 my %pm = map { ("lib/Earthclock/$_" => '$(INST_LIB)/Earthclock/' . $_) }
-    grep { -f "lib/Earthclock/$_" }
     ("Astro/Phoon.pm",
      "Astro/moon.png",
      "Astro/moon.xbm.gz",
@@ -89,6 +88,8 @@ SF_PACKAGE=earthclock
 .include "../perl.release.mk"
 .include "../perl.cvs.mk"
 
+bundle-files:
+	cp -v $(HOME)/src/bbbike/BBBikeAlarm.pm $(HOME)/src/bbbike/lib/Win32Util.pm lib/Earthclock
 EOF
     }
 

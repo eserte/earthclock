@@ -5,9 +5,9 @@ lib/Earthclock/Astro/moon.png
 lib/Earthclock/Astro/moon.xbm.gz
 lib/Earthclock/Astro/moon.xpm.gz
 lib/Earthclock/Date/Calendar.pm
-#lib/Earthclock/Win32Util.pm
+lib/Earthclock/Win32Util.pm
 lib/Earthclock/Tk/ICalEvent.pm
-#lib/Earthclock/BBBikeAlarm.pm
+lib/Earthclock/BBBikeAlarm.pm
 test.pl
 MANIFEST
 xearth.cgi
