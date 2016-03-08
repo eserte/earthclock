@@ -1,8 +1,9 @@
 README: earthclock
 
 A nice clock showing the earth. It's only really nice on Unix, and
-only if you have X11::Protocol and xearth installed. Instead of
-xearth, you can fetch images directly from the internet.
+only if you have X11::Protocol and xplanet, xearth or xglobe
+installed. Instead of an external earth-picture generating program,
+you can fetch images directly from the internet.
 
 INSTALLATION
 
