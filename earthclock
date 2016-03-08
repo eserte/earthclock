@@ -295,7 +295,7 @@ my $v;
 #my($sat_w,$sat_h,$sat_pad_x,$sat_pad_y) = (589, 589, 12, 12);
 # MET-8, Colour
 #my $eumetsat_list_url_fmt = "http://oiswww.eumetsat.org/IDDS-cgi/listImages.pl?m=bnw,a=0,sa=8,pr=BNW,f=1,c=IR_108,se=0,n=6,d=1,v=400,pp=0,t=%s"; # Colour, full disc, date as %s
-my($sat_w,$sat_h,$sat_pad_x,$sat_pad_y) = (800,800,12,20);
+my($sat_w,$sat_h,$sat_pad_x,$sat_pad_y) = (800,800,12,13);
 my $eumetsat_root_url = "http://oiswww.eumetsat.org";
 my $last_eumetsat_image = "http://oiswww.eumetsat.org/IPPS/html/latestImages/EUMETSAT_MSG_VIS006Color-all.jpg";
 my $test_url       = "http://www/~eserte/test/test.jpg";
