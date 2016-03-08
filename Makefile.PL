@@ -5,6 +5,7 @@ my $ver = MY->parse_version("earthclock");
 #my $changes_file = parse_recent_changelog();
 
 my %pm = map { ("lib/Earthclock/$_" => '$(INST_LIB)/Earthclock/' . $_) }
+    grep { -f "lib/Earthclock/$_" }
     ("Astro/Phoon.pm",
      "Astro/moon.png",
      "Astro/moon.xbm.gz",
