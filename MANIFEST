@@ -10,7 +10,5 @@ lib/Earthclock/Tk/ICalEvent.pm
 #lib/Earthclock/BBBikeAlarm.pm
 test.pl
 MANIFEST
-#install.pl
-#install.pl.config
 xearth.cgi
 README
