@@ -534,7 +534,9 @@ if ($@) {
 my $c = $top->Canvas(-border => 0,
 		     -height => $height,
 		     -width => $width,
-		     -highlightthickness => 0)->pack;
+		     -highlightthickness => 0,
+		     -background => 'black',
+		    )->pack;
 
 my $stay_above_after;
 # Leider wird bei aktiviertem Shape Visibility nur geschickt, wenn das
