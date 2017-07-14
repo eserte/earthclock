@@ -745,8 +745,8 @@ sub draw_time {
 sub subst_exe_string {
     my $s = shift;
     $s =~ s/\%p/$pos/g;
-    $s =~ s/\%{lon}/$longitude/g;
-    $s =~ s/\%{lat}/$latitude/g;
+    $s =~ s/\%\{lon\}/$longitude/g;
+    $s =~ s/\%\{lat\}/$latitude/g;
     $s =~ s/\%w/$width/g;
     $s =~ s/\%h/$height/g;
     $s =~ s/\%o/$tmpfile/g;
