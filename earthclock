@@ -4,7 +4,7 @@
 #
 # Author: Slaven Rezic
 #
-# Copyright (C) 2000,2001,2002,2003,2005,2009,2016 Slaven Rezic. All rights reserved.
+# Copyright (C) 2000,2001,2002,2003,2005,2009,2016,2018 Slaven Rezic. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -259,7 +259,7 @@ use Tk::App::Reloader;
 $Tk::App::Reloader::VERBOSE = 1;
 ';
 
-$VERSION = 2.01;
+$VERSION = 2.02;
 
 $sizes = { "tiny"   => [75,75,   2,2,1],
 	   "small"  => [125,125, 4,4,2],
@@ -537,6 +537,7 @@ my $c = $top->Canvas(-border => 0,
 		     -highlightthickness => 0,
 		     -background => 'black',
 		    )->pack;
+$c->configure(-scrollregion => [0,0,$width,$height]);
 
 my $stay_above_after;
 # Leider wird bei aktiviertem Shape Visibility nur geschickt, wenn das
