@@ -1,15 +1,14 @@
 # -*- perl -*-
 
 #
-# $Id: Phoon.pm,v 1.10 2002/04/16 22:27:07 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 2000 Slaven Rezic. All rights reserved.
+# Copyright (C) 2000,2020 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-# Mail: eserte@cs.tu-berlin.de
-# WWW:  http://user.cs.tu-berlin.de/~eserte/
+# Mail: srezic@cpan.org
+# WWW:  http://www.rezic.de
 #
 
 package
@@ -22,7 +21,7 @@ use FindBin;
 
 use strict;
 use vars qw($VERSION);
-$VERSION = sprintf("%d.%02d", q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/);
+$VERSION = '1.11';
 
 # phase.c - routines to calculate the phase of the moon
 #
@@ -500,7 +499,9 @@ sub tk_photo {
     }
 
     if (!$p) {
-	if (is_in_path("zcat") and
+	# note: zcat on MacOSX cannot deal with filenames ending with .gz (but only with .Z!)
+	my $zcat_prog = $^O eq 'darwin' ? is_in_path('gzcat') : is_in_path('zcat');
+	if ($zcat_prog and
 	    is_in_path("xbmtopbm") and
 	    is_in_path("pnmscale") and
 	    is_in_path("ppmtoxpm")) {
@@ -516,7 +517,7 @@ sub tk_photo {
 
 	    my $cmd;
 	    if ($imagefile =~ /\.gz$/) {
-		$cmd = "zcat $imagefile | xbmtopbm ";
+		$cmd = "$zcat_prog $imagefile | xbmtopbm ";
 	    } else {
 		$cmd = "xbmtopbm $imagefile ";
 	    }
@@ -859,6 +860,7 @@ MainLoop;
 # REPO BEGIN
 # REPO NAME max /home/e/eserte/src/repository 
 # REPO MD5 6232837b4a9cf07258e364a03b0a89dc
+
 =head2 max(...)
 
 Return maximum value.
@@ -878,6 +880,7 @@ sub max {
 # REPO BEGIN
 # REPO NAME tk_sleep /home/e/eserte/src/repository 
 # REPO MD5 a27d34cadcb4c0f321eae5ca04614005
+
 =head2 tk_sleep
 
     $top->tk_sleep($s);
