@@ -704,23 +704,25 @@ sub draw_time {
 	(!defined $last_earth_update ||
 	 $last_earth_update+$wait<time ||
 	 $args{-forcedraw})) {
-	$img->delete if $img;
 
 	$c->Busy;
 	eval {
+	    my $update_needed;
 	    my $thisearthcmd = $dflt_earthcmd;
 	    if (ref $thisearthcmd ne "CODE") {
 		$thisearthcmd = subst_exe_string($thisearthcmd);
 		system $thisearthcmd;
+		$update_needed = 1;
 	    } else {
-		$thisearthcmd->(-pos => $pos,
-				-width => $width,
-				-height => $height,
-				-tmpfile => $tmpfile,
-				-forcedraw => ($args{-forcedraw} || !defined $last_earth_update));
+		$update_needed = $thisearthcmd->(-pos => $pos,
+						 -width => $width,
+						 -height => $height,
+						 -tmpfile => $tmpfile,
+						 -forcedraw => ($args{-forcedraw} || !defined $last_earth_update));
 	    }
 
-	    if (-r $tmpfile and -s $tmpfile) {
+	    if ($update_needed && -r $tmpfile && -s $tmpfile) {
+		$img->delete if $img;
 		$img = $top->Photo(-file => $tmpfile);
 		if (!defined $c_img) {
 		    $c_img = $c->createImage($width/2, $height/2, -tags => "img");
@@ -1115,7 +1117,13 @@ sub get_sat_image {
 	$resp = $ua->request($req, $tmpjpeg);
     }
 
-    if ($resp->is_success || ($resp->code == 304 && $args{-forcedraw})) {
+    return 0 if $args{-mirror} && $resp->code == 304 && !$args{-forcedraw};
+
+    if (!$resp->is_success) {
+	die "Cannot fetch $url:\n" . $resp->dump;
+    }
+
+    {
 	(my $infmt = ($resp->header('Content-Type')||'')) =~ s|^image/||;
 	if (!$infmt) { # may happen if mirroring was successful, try simple-minded heuristics
 	    ($infmt) = $tmpjpeg =~ /.*\.(.*)$/;
@@ -1127,20 +1135,16 @@ sub get_sat_image {
 	    require File::Copy;
 	    File::Copy::cp($tmpjpeg, $args{-tmpfile});
 	} else {
-	    eval {
-		resize_image(-in     => $tmpjpeg,
-			     -infmt  => $infmt,
-			     -out    => $args{-tmpfile},
-			     -outfmt => $outfmt,
-			     -width  => $args{-width},
-			     -height => $args{-height},
-			     -crop   => $args{-crop},
-			    );
-	    };
-	    warn $@ if $@;
+	    resize_image(-in     => $tmpjpeg,
+			 -infmt  => $infmt,
+			 -out    => $args{-tmpfile},
+			 -outfmt => $outfmt,
+			 -width  => $args{-width},
+			 -height => $args{-height},
+			 -crop   => $args{-crop},
+		     );
 	}
-    } else {
-	warn "Cannot fetch $url:\n" . $resp->dump;
+	return 1;
     }
 }
 
