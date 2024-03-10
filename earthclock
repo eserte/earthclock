@@ -1422,14 +1422,15 @@ sub win32_stay_on_top {
 }
 
 sub about {
+    my($current_year) = (localtime)[5]+1900;
     $top->messageBox(-icon => "info",
 		     -message => <<EOF,
 earthclock $VERSION
 © Slaven Rezic
 
 The satellite images are from
-http://oiswww.eumetsat.org and
-are © 2003 EUMETSAT
+https://eumetview.eumetsat.int and
+are © $current_year EUMETSAT
 EOF
 		     -type => "Ok");
 }
