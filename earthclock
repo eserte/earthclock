@@ -1119,7 +1119,7 @@ sub get_sat_image {
 
     return 0 if $args{-mirror} && $resp->code == 304 && !$args{-forcedraw};
 
-    if (!$resp->is_success) {
+    if (!$resp->is_success && $resp->code != 304) {
 	die "Cannot fetch $url:\n" . $resp->dump;
     }
 
