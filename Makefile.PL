@@ -81,9 +81,6 @@ sub MY::postamble {
     if ($is_devel_host) {
 	$postamble .= <<'EOF';
 
-rsync-xearth.cgi:
-	rsync -Pvzr xearth.cgi user.cs.tu-berlin.de:www/cgi/xearth.cgi
-
 SF_PROJECT=ptktools
 SF_PACKAGE=earthclock
 
