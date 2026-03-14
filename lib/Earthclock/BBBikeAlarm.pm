@@ -3,7 +3,7 @@
 #
 # Author: Slaven Rezic
 #
-# Copyright (C) 2000,2006,2008,2009,2012,2015 Slaven Rezic. All rights reserved.
+# Copyright (C) 2000,2006,2008,2009,2012,2015,2019 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -40,11 +40,11 @@ my $install_datebook_additions = 1;
 use File::Basename qw(basename);
 use Time::Local;
 
-$VERSION = '1.46';
+$VERSION = '1.47';
 
 # XXX S25 Termin (???)
 # XXX Terminal-Alarm unter Windows? Linux?
-# XXX Leave funktioniert nur für max. 12 Stunden (testen!)
+# XXX Leave funktioniert nur fï¿½r max. 12 Stunden (testen!)
 
 sub my_die ($) {
     my $msg = shift;
@@ -71,7 +71,7 @@ sub enter_alarm {
     };
     if (!defined $ride_time) {
 	$top->messageBox(
-			 -message => M"Keine Fahrzeit übergeben",
+			 -message => M"Keine Fahrzeit ï¿½bergeben",
 			 -icon => 'error',
 			 -type => 'OK',
 			);
@@ -118,7 +118,7 @@ sub enter_alarm {
 		(-variable => \$sunset_choice,
 		 -options => [["" => ""],
 			      [M("Sonnenuntergang") => $sunset_real],
-			      [M("Ende der bürgerl. Dämmerung") => $sunset_civil],
+			      [M("Ende der bï¿½rgerl. Dï¿½mmerung") => $sunset_civil],
 			     ],
 		 -command => sub {
 		     $ankunft = $sunset_choice
@@ -335,7 +335,7 @@ sub enter_alarm {
 		       $t->destroy;
 		   })->pack(-side => "left", -fill => "x", -expand => 1);
 	$f->Button(Name => "close",
-		   -text => M"Schließen",
+		   -text => M"Schlieï¿½en",
 		   -command => sub {
 		       $do_close = 1;
 		       $t->destroy;
@@ -892,7 +892,7 @@ sub emacs_org_mode_date {
     $txt->insert("end", "** $text <$org_date>");
     $txt->selectAll;
     $t->Button(Name => "close",
-	       -text => M"Schließen",
+	       -text => M"Schlieï¿½en",
 	       -command => sub {
 		   $t->destroy;
 	       })->pack(-side => "right", -fill => "x");
@@ -922,18 +922,24 @@ sub tk_interface {
 
     $top->withdraw;
 
-    $top->optionAdd("*font", "Helvetica 24 bold");
-    $top->optionAdd("*padX", 20);
-    $top->optionAdd("*padY", 20);
-    $top->optionAdd("*background", "#ff0000");
-    $top->optionAdd("*foreground", "white");
-    $top->optionAdd("*activeBackground", "#ff8080");
-    $top->optionAdd("*activeForeground", "white");
+    $top->optionAdd("*Big*font", "Helvetica 24 bold");
+    $top->optionAdd("*Big*padX", 20);
+    $top->optionAdd("*Big*padY", 20);
+    $top->optionAdd("*Big*background", "#ff0000");
+    $top->optionAdd("*Big*foreground", "white");
+    $top->optionAdd("*Big*activeBackground", "#ff8080");
+    $top->optionAdd("*Big*activeForeground", "white");
+
+    $top->optionAdd("*Mini*font", "Helvetica 7");
+    $top->optionAdd("*Mini*padX", 0);
+    $top->optionAdd("*Mini*padY", 0);
+    $top->optionAdd("*Mini*border", 0);
 
     if ($args{-ask}) {
 	require Tk::DialogBox;
 	require POSIX;
 	my $d = $top->DialogBox(
+				-class => 'Big',
 				-title => M"Alarm setzen?",
 				-buttons => ['Yes', 'No'],
 				-default_button => 'Yes',
@@ -955,9 +961,16 @@ sub tk_interface {
 
     my $cb =
 	$top->Button(
+		     -class   => 'Big',
 		     -text    => $text, # forces initial size of toplevel
 		     -command => sub { $top->destroy },
 		    )->pack;
+    my $renewal_b;
+    $renewal_b = $cb->Button(
+			     -class => 'Mini',
+			     -text => 'Renewal',
+			     -command => sub { show_renewal_periods_dialog($top, $text, %args) },
+			    )->place(-relx => 1, -rely => 1, -anchor => 'se');
 #    $balloon->attach($cb, -msg => $text);
     my $red = 0xff;
     my $dir = -1;
@@ -995,8 +1008,7 @@ sub tk_interface {
 	add_tk_alarm($$, $end_time, $esc_text);
     }
 
-    $top->after
-	($wait*1000, sub {
+    my $alarm_cb = sub {
 	     $top->deiconify;
 	     $top->raise;
 	     if ($Tk::platform eq 'unix') {
@@ -1028,9 +1040,48 @@ sub tk_interface {
 			  $dir = -1;
 		      }
 		  });
+    };
 
-	      });
+    my $max_after_seconds = 60;
+    my $schedule_alarm_check; # pre-declare for recursive reference
+    $schedule_alarm_check = sub {
+	my $remaining = $end_time - time;
+	if ($remaining <= 0) {
+	    $alarm_cb->();
+	} else {
+	    my $next_check = $remaining < $max_after_seconds ? $remaining : $max_after_seconds;
+	    $top->after($next_check * 1000, $schedule_alarm_check);
+	}
+    };
+    $schedule_alarm_check->();
     Tk::MainLoop();
+}
+
+sub show_renewal_periods_dialog {
+    my($top, $text, %args) = @_;
+    my $d = $top->Toplevel(-title => "Renewal additional ...");
+    for my $def (
+		 (map { [$_."min", $_*60] } (1,5,10,15,20,25,30,35,40,45,50,55)),
+		 (map { [$_."h", $_*3600] } (1,2,3,6,12)),
+		 ['Cancel', undef],
+		) {
+	my($label, $period) = @$def;
+	$d->Button(-text => $label,
+		   -command => sub {
+		       if (defined $period) {
+			   $top->afterIdle(sub {
+					       $top->destroy;
+					       tk_interface(time + $period, $text, %args);
+					   });
+		       } else {
+			   $d->destroy;
+		       }
+		   },
+		  )->pack(-fill => 'x');
+    }
+    $d->Popup(-popover => 'cursor', -popanchor => 'n');
+    
+
 }
 
 sub get_alarms_file {
@@ -1199,14 +1250,14 @@ sub show_all {
 	    $l[3] = _decode_desc($desc);
 	    my $state = "unknown";
 	    if ($host eq $this_host) {
-		$state = (kill(0 => $pid) ? M("läuft") : M("läuft nicht"));
+		$state = (kill(0 => $pid) ? M("lï¿½uft") : M("lï¿½uft nicht"));
 	    }
 	    push @l, $state;
 
 	    my $reltime;
 	    my $min = ($time-time)/60;
 	    if ($min < 0) {
-		$reltime = M"überfällig";
+		$reltime = M"ï¿½berfï¿½llig";
 	    } else {
 		$reltime = sprintf "%d:%02d h", $min/60, abs($min)%60;
 	    }
@@ -1625,7 +1676,7 @@ Debian systems). In this case, just remove the mentioned file.
 
 =head1 TODO
 
-    sollte ich evtl. verwenden für die Liste der Alarme:
+    sollte ich evtl. verwenden fï¿½r die Liste der Alarme:
     http://reefknot.sourceforge.net/
     Date::ICal, Net::ICal
 
