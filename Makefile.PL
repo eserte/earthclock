@@ -76,7 +76,9 @@ sub MY::libscan {
 sub MY::postamble {
     my $postamble = "";
 
-    if (defined $ENV{USER} && $ENV{USER} eq 'eserte' && $^O =~ /bsd/i && -f "../perl.release.mk") {
+    my $is_devel_host = defined $ENV{USER} && $ENV{USER} eq 'eserte' && ($^O =~ /bsd/i || $ENV{PERL_RELEASE_READY}) && -f "../perl.release.mk";
+
+    if ($is_devel_host) {
 	$postamble .= <<'EOF';
 
 rsync-xearth.cgi:
@@ -87,6 +89,10 @@ SF_PACKAGE=earthclock
 
 .include "../perl.release.mk"
 .include "../perl.cvs.mk"
+
+diff-bundle-files:
+	-diff -u lib/Earthclock $(HOME)/src/bbbike/BBBikeAlarm.pm
+	-diff -u lib/Earthclock $(HOME)/src/bbbike/lib/Win32Util.pm
 
 bundle-files:
 	cp -v $(HOME)/src/bbbike/BBBikeAlarm.pm $(HOME)/src/bbbike/lib/Win32Util.pm lib/Earthclock
