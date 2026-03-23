@@ -3,12 +3,11 @@
 #
 # Author: Slaven Rezic
 #
-# Copyright (C) 2000,2006,2008,2009,2012,2015,2019 Slaven Rezic. All rights reserved.
+# Copyright (C) 2000,2006,2008,2009,2012,2015,2019,2026 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-# Mail: slaven@rezic.de
-# WWW:  http://bbbike.de
+# WWW:  https://github.com/eserte/bbbike
 #
 
 package BBBikeAlarm;
@@ -40,11 +39,11 @@ my $install_datebook_additions = 1;
 use File::Basename qw(basename);
 use Time::Local;
 
-$VERSION = '1.47';
+$VERSION = '1.48';
 
 # XXX S25 Termin (???)
 # XXX Terminal-Alarm unter Windows? Linux?
-# XXX Leave funktioniert nur fï¿½r max. 12 Stunden (testen!)
+# XXX Leave funktioniert nur für max. 12 Stunden (testen!)
 
 sub my_die ($) {
     my $msg = shift;
@@ -71,7 +70,7 @@ sub enter_alarm {
     };
     if (!defined $ride_time) {
 	$top->messageBox(
-			 -message => M"Keine Fahrzeit ï¿½bergeben",
+			 -message => M"Keine Fahrzeit übergeben",
 			 -icon => 'error',
 			 -type => 'OK',
 			);
@@ -118,7 +117,7 @@ sub enter_alarm {
 		(-variable => \$sunset_choice,
 		 -options => [["" => ""],
 			      [M("Sonnenuntergang") => $sunset_real],
-			      [M("Ende der bï¿½rgerl. Dï¿½mmerung") => $sunset_civil],
+			      [M("Ende der bürgerl. Dämmerung") => $sunset_civil],
 			     ],
 		 -command => sub {
 		     $ankunft = $sunset_choice
@@ -335,7 +334,7 @@ sub enter_alarm {
 		       $t->destroy;
 		   })->pack(-side => "left", -fill => "x", -expand => 1);
 	$f->Button(Name => "close",
-		   -text => M"Schlieï¿½en",
+		   -text => M"Schließen",
 		   -command => sub {
 		       $do_close = 1;
 		       $t->destroy;
@@ -892,7 +891,7 @@ sub emacs_org_mode_date {
     $txt->insert("end", "** $text <$org_date>");
     $txt->selectAll;
     $t->Button(Name => "close",
-	       -text => M"Schlieï¿½en",
+	       -text => M"Schließen",
 	       -command => sub {
 		   $t->destroy;
 	       })->pack(-side => "right", -fill => "x");
@@ -1250,14 +1249,14 @@ sub show_all {
 	    $l[3] = _decode_desc($desc);
 	    my $state = "unknown";
 	    if ($host eq $this_host) {
-		$state = (kill(0 => $pid) ? M("lï¿½uft") : M("lï¿½uft nicht"));
+		$state = (kill(0 => $pid) ? M("läuft") : M("läuft nicht"));
 	    }
 	    push @l, $state;
 
 	    my $reltime;
 	    my $min = ($time-time)/60;
 	    if ($min < 0) {
-		$reltime = M"ï¿½berfï¿½llig";
+		$reltime = M"überfällig";
 	    } else {
 		$reltime = sprintf "%d:%02d h", $min/60, abs($min)%60;
 	    }
@@ -1676,7 +1675,7 @@ Debian systems). In this case, just remove the mentioned file.
 
 =head1 TODO
 
-    sollte ich evtl. verwenden fï¿½r die Liste der Alarme:
+    sollte ich evtl. verwenden für die Liste der Alarme:
     http://reefknot.sourceforge.net/
     Date::ICal, Net::ICal
 
